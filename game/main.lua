@@ -10,6 +10,8 @@ end
 
 function love.draw()
   -- Your game draw here
+	love.graphics.print("I have to rewrite my entire app, because it is spaghetti.", 10, 10)
+  
   overlayStats.draw() -- Should always be called last
 end
 
