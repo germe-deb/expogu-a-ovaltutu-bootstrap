@@ -32,7 +32,7 @@ function love.conf(t)
   t.externalstorage       = false
   t.gammacorrect          = false
 
-  t.audio.mic             = product_config["AUDIO_MIC"]
+  t.audio.mic             = false -- product_config["AUDIO_MIC"]
   t.audio.mixwithsystem   = false
 
   t.window.title          = product_config["PRODUCT_NAME"]
@@ -43,7 +43,7 @@ function love.conf(t)
   t.window.resizable      = true
   t.window.minwidth       = 1
   t.window.minheight      = 1
-  t.window.fullscreen     = true
+  t.window.fullscreen     = false
   t.window.fullscreentype = "desktop"
   t.window.vsync          = 1
   t.window.msaa           = 0

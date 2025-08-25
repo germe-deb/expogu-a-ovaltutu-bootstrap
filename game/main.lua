@@ -1,6 +1,30 @@
+
+-- libraries
+
+-- ovaltutu bootstrap things
 https = nil
 local overlayStats = require("lib.overlayStats")
 local runtimeLoader = require("runtime.loader")
+
+-- lick
+local lick = require "lib/lick/lick"
+lick.updateAllFiles = true
+lick.clearPackages = true
+lick.reset = true
+lick.debug = true
+
+-- dkjson
+local json = require "lib/dkjson"
+
+
+-- assets
+local expoguia_title_png = love.graphics.newImage("assets/images/expoguia-title.png")
+local font_reddit_regular_16 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 16)
+local font_reddit_regular_24 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 24)
+local font_reddit_regular_32 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 32)
+
+-- variables
+local safe_x, safe_y, safe_w, safe_h = 0, 0, 0, 0
 
 function love.load()
   https = runtimeLoader.loadHTTPS()
@@ -11,7 +35,7 @@ end
 function love.draw()
   -- Your game draw here
 	love.graphics.print("I have to rewrite my entire app, because it is spaghetti.", 10, 10)
-  
+
   overlayStats.draw() -- Should always be called last
 end
 
