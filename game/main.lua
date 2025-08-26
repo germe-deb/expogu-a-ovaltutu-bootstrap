@@ -5,8 +5,8 @@ https = nil
 local overlayStats = require("lib.overlayStats")
 local runtimeLoader = require("runtime.loader")
 
--- dkjson
-local json = require "lib/dkjson"
+-- json.lua
+json = require("lib/json")
 
 -- batteries
 local class = require("lib/batteries/class")
@@ -55,6 +55,19 @@ local group_99_png = love.graphics.newImage("assets/images/group-99.png")
 local debug = false
 local safe = {x = 0, y = 0, w = 0, h = 0}
 safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
+local floatingui = {
+  x = 0,
+  y = 64,
+  lx = 0, -- lerped x
+  ly = 64, -- lerped y
+  timer = 0
+}
+local dialog = {
+  y = safe.h,
+  ly = safe.h,
+  title = "",
+  borderheight = 48
+}
 
 -- colores
 local color = {
@@ -80,9 +93,13 @@ local ui_state_machine = StateMachine({}, "menu")
 ui_state_machine:add_state("menu", {
   enter = function(self, prev)
     print("entered menu")
+    floatingui.y = 64
   end,
   exit = function(self)
     print("exited menu")
+    -- iniciar un timer, usado para lerp de floatingui.ly
+    floatingui.timer = 0
+    floatingui.timer = love.timer.getTime()
   end,
   update = function(self, dt)
     expoguia_title.scale = expo.scale(safe.w, safe.h, expoguia_title.png:getWidth(), expoguia_title.png:getHeight(), 0.75)
@@ -100,13 +117,16 @@ ui_state_machine:add_state("map", {
     print("entered map")
     expoguia_map.x, expoguia_map.y = 0.5*safe.w, 0.5*safe.h
     expoguia_map.scale = expo.scale(safe.w, safe.h, expoguia_map.png:getWidth(), expoguia_map.png:getHeight(), 1.1)
+    floatingui.y = 0
   end,
   exit = function(self)
     print("exited map")
     if autolock.enabled then autolock.timer = 0 end
+    floatingui.timer = 0
+    floatingui.timer = love.timer.getTime()
   end,
   update = function(self, dt)
-    if autolock.enabled then
+    if autolock.enabled and not (love.mouse.isDown(1) or love.mouse.isDown(2))then
       autolock.timer = autolock.timer + dt
       if autolock.timer >= autolock.max then
         print("autolock: returning to menu")
@@ -120,6 +140,69 @@ ui_state_machine:add_state("map", {
     love.graphics.draw(expoguia_map.png, expoguia_map.x, expoguia_map.y, 0, expoguia_map.scale, expoguia_map.scale, 0.5*expoguia_map.png:getWidth(), 0.5*expoguia_map.png:getHeight())
   end
 })
+
+-- maquina de estados para los dialogos
+local dialog_state_machine = StateMachine({}, "idle")
+
+-- Estado idle
+dialog_state_machine:add_state("ilde", {
+  enter = function(self, prev)
+    dialog.y = safe.h
+  end,
+  exit = function(self)
+  end,
+  update = function(self, dt)
+  end,
+  draw = function(self)
+  end
+})
+
+-- about
+dialog_state_machine:add_state("about", {
+  enter = function(self, prev)
+    dialog.y = safe.h*0.4
+  end,
+  exit = function(self)
+  end,
+  update = function(self, dt)
+  end,
+  draw = function(self)
+  end
+})
+-- filtros
+dialog_state_machine:add_state("filter", {
+  enter = function(self, prev)
+    dialog.y = safe.h*0.15
+  end,
+  exit = function(self)
+  end,
+  update = function(self, dt)
+  end,
+  draw = function(self)
+  end
+})
+-- stand ("selección")
+dialog_state_machine:add_state("stand", {
+  enter = function(self, prev)
+    dialog.y = safe.h*0.4
+  end,
+  exit = function(self)
+  end,
+  update = function(self, dt)
+  end,
+  draw = function(self)
+  end
+})
+
+
+-- stands.
+local stands = {}
+
+local jsonFile = love.filesystem.read("assets/json/stands.json")
+-- if jsonFile then
+  stands = json.decode(jsonFile)
+  stands = expo.automate_stand_id(stands)
+-- end
 
 function love.load()
   https = runtimeLoader.loadHTTPS()
@@ -142,13 +225,27 @@ function love.update(dt)
 	if dt > 0.07 then
 		dt = 0.07
 	end
-
   -- safearea
   -- safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 
   ui_state_machine:update(dt)
   -- Your game update here
   overlayStats.update(dt) -- Should always be called last
+end
+
+local function draw_always_shown_content()
+  -- dibujar el botón de recentrado
+  local r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+  love.graphics.setColor(r, g, b, a)
+
+  local elapsed = 0
+  if floatingui.timer then
+    elapsed = (love.timer.getTime() - floatingui.timer)*2
+    if elapsed >= 1 then elapsed = 1 end
+  end
+  floatingui.ly = expo.lerpinout(floatingui.ly, floatingui.y, elapsed)
+
+  love.graphics.circle("fill", safe.w-38+floatingui.lx, safe.h-38+floatingui.ly, 24)
 end
 
 function love.draw()
@@ -159,18 +256,15 @@ function love.draw()
   love.graphics.setFont(font_reddit_regular_16) -- setear la fuente por defecto
   local r, g, b, a = expo.hexcolorfromstring(color.background)
   love.graphics.setBackgroundColor(r, g, b, a) -- setear el background a negro
-
   love.graphics.translate(safe.x, safe.y) -- translatear a safe_x y safe_y
-
-	love.graphics.print("I have to rewrite my entire app, because it is spaghetti.", 10, 10)
-
   ui_state_machine:draw()
+
+  draw_always_shown_content()
 
   love.graphics.pop()
 
   overlayStats.draw() -- Should always be called last
 end
-
 
 -- keyboard input handling
 function love.keypressed(key)
@@ -216,7 +310,7 @@ local function handlemoved(id, x, y, dx, dy, istouch)
   if debug then
     print("moved: " .. id .. " x,y: " .. x .. "," .. y .. " dx,dy: " .. dx .. "," .. dy)
   end
-
+  local multiplier = 0
   if ui_state_machine:in_state("map") and expoguia_map.allowdrag then
     if istouch then multiplier = 0.5 else multiplier = 1 end
     expoguia_map.x = expoguia_map.x + dx*multiplier

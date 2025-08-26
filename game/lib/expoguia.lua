@@ -41,6 +41,13 @@ function expo.scale(contW, contH, objW, objH, scale)
   return scaleFactor
 end
 
+-- automatizar los ID de los stands
+function expo.automate_stand_id(stand_table)
+    for i, stand in ipairs(stand_table) do
+        stand.id = i
+    end
+    return stand_table
+end
 
 function expo.centeredtext(texto, alix, aliy, fuente, style, contW, contH)
     love.graphics.push()

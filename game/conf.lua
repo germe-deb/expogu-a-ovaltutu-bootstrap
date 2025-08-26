@@ -37,8 +37,8 @@ function love.conf(t)
 
   t.window.title          = product_config["PRODUCT_NAME"]
   t.window.icon           = nil
-  t.window.width          = 800
-  t.window.height         = 600
+  t.window.width          = 436
+  t.window.height         = 682
   t.window.borderless     = false
   t.window.resizable      = true
   t.window.minwidth       = 1
