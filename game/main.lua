@@ -56,6 +56,15 @@ local debug = false
 local safe = {x = 0, y = 0, w = 0, h = 0}
 safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 
+-- colores
+local color = {
+  background = "#212121ff",
+  text = "#ffffffff",
+  foreground_light = "#2e2e2eff",
+  button_idle = "#404040ff",
+  button_pressed = "#202020ff"
+}
+
 -- automatic lock for kiosk mode
 local autolock = {
   enabled = false,
@@ -64,35 +73,58 @@ local autolock = {
   max = 60 -- seconds
 }
 
+-- helper functions
+-- función para transformar hex a r, g, b, a
+local function hexcolor(int)
+  return bit.band(bit.rshift(int, 24), 255)/255,
+  bit.band(bit.rshift(int, 16), 255)/255,
+  bit.band(bit.rshift(int, 8), 255)/255,
+  bit.band(int, 255)/255
+end
+local function hexcolorfromstring(str)
+  local int = str:match('#(%x+)')
+  return hexcolor( tonumber(int, 16) )
+end
+
+-- funcion que reemplaza lo siguiente:
+-- if var >= a and var <= b then.
+local function inrange(var, a, b)
+  return var >= a and var <= b
+end
+
+
 -- estados
 local ui_state = {}
 
 ui_state.menu = {
   enter = function(self, prev)
     print("entered menu")
-    expoguia_title.scale = expo.scale(safe.w, safe.h, expoguia_title.png:getWidth(), expoguia_title.png:getHeight(), 0.75)
-    expoguia_title.x, expoguia_title.y = expo.centered(safe.w, safe.h, expoguia_title.png:getWidth()*expoguia_title.scale, expoguia_title.png:getHeight()*expoguia_title.scale)
   end,
   exit = function(self)
     print("exited menu")
   end,
   update = function(self, dt)
     -- Lógica del menú
+    expoguia_title.scale = expo.scale(safe.w, safe.h, expoguia_title.png:getWidth(), expoguia_title.png:getHeight(), 0.75)
+    expoguia_title.x, expoguia_title.y = 0.5*safe.w, 0.5*safe.h
   end,
   draw = function(self)
     love.graphics.print("Menú principal", 10, 40)
-    love.graphics.draw(expoguia_title.png, expoguia_title.x, expoguia_title.y, 0, expoguia_title.scale, expoguia_title.scale)
+    love.graphics.draw(expoguia_title.png, expoguia_title.x, expoguia_title.y, 0, expoguia_title.scale, expoguia_title.scale, 0.5*expoguia_title.png:getWidth(), 0.5*expoguia_title.png:getHeight())
   end
 }
 
 ui_state.map = {
   enter = function(self, prev)
     print("entered map")
+    expoguia_map.x, expoguia_map.y = 0.5*safe.w, 0.5*safe.h
+    expoguia_map.scale = expo.scale(safe.w, safe.h, expoguia_map.png:getWidth(), expoguia_map.png:getHeight(), 1.1)
   end,
   exit = function(self)
     print("exited map")
   end,
   update = function(self, dt)
+
     -- autolock:
     --[[
     if autolock.state == false then
@@ -105,7 +137,7 @@ ui_state.map = {
   end,
   draw = function(self)
     love.graphics.print("map view", 10, 70)
-
+    love.graphics.draw(expoguia_map.png, expoguia_map.x, expoguia_map.y, 0, expoguia_map.scale, expoguia_map.scale, 0.5*expoguia_map.png:getWidth(), 0.5*expoguia_map.png:getHeight())
   end
 }
 
@@ -117,6 +149,9 @@ function love.load()
   https = runtimeLoader.loadHTTPS()
   -- Your game load here
   overlayStats.load() -- Should always be called last
+
+  -- safearea
+  safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 
   -- activate autolock for kiosk devices (pc)
   if love.system.getOS() == "iOS" or love.system.getOS() == "Android" then
@@ -133,7 +168,7 @@ function love.update(dt)
 	end
 
   -- safearea
-  safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
+  -- safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 
   ui_state_machine:update(dt)
   -- Your game update here
@@ -142,12 +177,12 @@ end
 
 function love.draw()
   -- Your game draw here
-
-  -- Ajustar la posición vertical según el teclado
   love.graphics.push()
-  love.graphics.setFont(font_reddit_regular_16) -- setear la fuente por defecto
-  love.graphics.setBackgroundColor(0, 0, 0) -- setear el background a negro
   love.graphics.setColor(1, 1, 1, 1) -- setear el color a blanco
+
+  love.graphics.setFont(font_reddit_regular_16) -- setear la fuente por defecto
+  local r, g, b, a = hexcolorfromstring(color.background)
+  love.graphics.setBackgroundColor(r, g, b, a) -- setear el background a negro
 
   love.graphics.translate(safe.x, safe.y) -- translatear a safe_x y safe_y
 
@@ -181,11 +216,34 @@ local function handlepressed(id, x, y, button)
   if debug then
     print("pressed: " .. id .. " x,y: " .. x .. "," .. y .. " button: " .. button)
   end
+  if ui_state_machine:in_state("menu") then
+    if inrange(x, 0*safe.w, 0.1*safe.w) and
+       inrange(y, 0*safe.h, 0.1*safe.h) then
+      print("about dialog")
+    else
+      ui_state_machine:set_state("map")
+    end
+  end
+
+  if ui_state_machine:in_state("map") then
+    if inrange(x, 0*safe.w, 0.1*safe.w) and
+       inrange(y, 0*safe.h, 0.1*safe.h) then
+      print("back to menu")
+      ui_state_machine:set_state("menu")
+    end
+  end
+
 end
 local function handlemoved(id, x, y, dx, dy)
   if debug then
     print("moved: " .. id .. " x,y: " .. x .. "," .. y .. " dx,dy: " .. dx .. "," .. dy)
   end
+
+  if ui_state_machine:in_state("map") then
+    expoguia_map.x = expoguia_map.x + dx
+    expoguia_map.y = expoguia_map.y + dy
+  end
+
 end
 
 -- input handling
@@ -206,4 +264,9 @@ end
 function love.mousereleased(x, y, button, istouch, presses)
 end
 function love.touchreleased(id, x, y, dx, dy, pressure)
+end
+
+-- window resizing
+function love.resize(w, h)
+  safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 end
