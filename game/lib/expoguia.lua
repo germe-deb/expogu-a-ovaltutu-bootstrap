@@ -164,4 +164,25 @@ function expo.lerpinout(a, b, t)
     end
 end
 
+-- función para transformar hex a r, g, b, a
+function expo.hexcolor(int)
+  return bit.band(bit.rshift(int, 24), 255)/255,
+  bit.band(bit.rshift(int, 16), 255)/255,
+  bit.band(bit.rshift(int, 8), 255)/255,
+  bit.band(int, 255)/255
+end
+function expo.hexcolorfromstring(str)
+  local int = str:match('#(%x+)')
+  return expo.hexcolor( tonumber(int, 16) )
+end
+
+-- funcion que reemplaza lo siguiente:
+-- if var >= a and var <= b then.
+function expo.inrange(var, a, b)
+  return var >= a and var <= b
+end
+
+
+
+
 return expo

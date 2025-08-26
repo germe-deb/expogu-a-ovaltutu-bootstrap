@@ -1,4 +1,3 @@
-
 -- libraries
 
 -- ovaltutu bootstrap things
@@ -27,7 +26,8 @@ local expoguia_map = {
   png = love.graphics.newImage("assets/images/mapa.png"),
   x = 0,
   y = 0,
-  scale = 1
+  scale = 1,
+  allowdrag = false
 }
 local font_reddit_regular_16 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 16)
 local font_reddit_regular_24 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 24)
@@ -68,35 +68,16 @@ local color = {
 -- automatic lock for kiosk mode
 local autolock = {
   enabled = false,
-  state = false,
   timer = 0,
-  max = 60 -- seconds
+  max = 5 -- seconds
 }
 
--- helper functions
--- función para transformar hex a r, g, b, a
-local function hexcolor(int)
-  return bit.band(bit.rshift(int, 24), 255)/255,
-  bit.band(bit.rshift(int, 16), 255)/255,
-  bit.band(bit.rshift(int, 8), 255)/255,
-  bit.band(int, 255)/255
-end
-local function hexcolorfromstring(str)
-  local int = str:match('#(%x+)')
-  return hexcolor( tonumber(int, 16) )
-end
-
--- funcion que reemplaza lo siguiente:
--- if var >= a and var <= b then.
-local function inrange(var, a, b)
-  return var >= a and var <= b
-end
-
-
 -- estados
-local ui_state = {}
+-- Crear la máquina de estados primero
+local ui_state_machine = StateMachine({}, "menu")
 
-ui_state.menu = {
+-- Estado menú
+ui_state_machine:add_state("menu", {
   enter = function(self, prev)
     print("entered menu")
   end,
@@ -104,7 +85,6 @@ ui_state.menu = {
     print("exited menu")
   end,
   update = function(self, dt)
-    -- Lógica del menú
     expoguia_title.scale = expo.scale(safe.w, safe.h, expoguia_title.png:getWidth(), expoguia_title.png:getHeight(), 0.75)
     expoguia_title.x, expoguia_title.y = 0.5*safe.w, 0.5*safe.h
   end,
@@ -112,9 +92,10 @@ ui_state.menu = {
     love.graphics.print("Menú principal", 10, 40)
     love.graphics.draw(expoguia_title.png, expoguia_title.x, expoguia_title.y, 0, expoguia_title.scale, expoguia_title.scale, 0.5*expoguia_title.png:getWidth(), 0.5*expoguia_title.png:getHeight())
   end
-}
+})
 
-ui_state.map = {
+-- Estado mapa
+ui_state_machine:add_state("map", {
   enter = function(self, prev)
     print("entered map")
     expoguia_map.x, expoguia_map.y = 0.5*safe.w, 0.5*safe.h
@@ -122,28 +103,23 @@ ui_state.map = {
   end,
   exit = function(self)
     print("exited map")
+    if autolock.enabled then autolock.timer = 0 end
   end,
   update = function(self, dt)
-
-    -- autolock:
-    --[[
-    if autolock.state == false then
-      autolock.state = true
-    elseif ui.state == 1 then
-      autolock.state = false
-      autolock.timer = 0
+    if autolock.enabled then
+      autolock.timer = autolock.timer + dt
+      if autolock.timer >= autolock.max then
+        print("autolock: returning to menu")
+        ui_state_machine:set_state("menu")
+        autolock.timer = 0
+      end
     end
-    ]]
   end,
   draw = function(self)
-    love.graphics.print("map view", 10, 70)
+    love.graphics.print("map view", 10, 40)
     love.graphics.draw(expoguia_map.png, expoguia_map.x, expoguia_map.y, 0, expoguia_map.scale, expoguia_map.scale, 0.5*expoguia_map.png:getWidth(), 0.5*expoguia_map.png:getHeight())
   end
-}
-
--- Crear la máquina de estados
-local ui_state_machine = StateMachine(ui_state, "menu")
-
+})
 
 function love.load()
   https = runtimeLoader.loadHTTPS()
@@ -181,7 +157,7 @@ function love.draw()
   love.graphics.setColor(1, 1, 1, 1) -- setear el color a blanco
 
   love.graphics.setFont(font_reddit_regular_16) -- setear la fuente por defecto
-  local r, g, b, a = hexcolorfromstring(color.background)
+  local r, g, b, a = expo.hexcolorfromstring(color.background)
   love.graphics.setBackgroundColor(r, g, b, a) -- setear el background a negro
 
   love.graphics.translate(safe.x, safe.y) -- translatear a safe_x y safe_y
@@ -212,13 +188,13 @@ function love.keypressed(key)
 end
 
 
-local function handlepressed(id, x, y, button)
+local function handlepressed(id, x, y, button, istouch)
   if debug then
     print("pressed: " .. id .. " x,y: " .. x .. "," .. y .. " button: " .. button)
   end
   if ui_state_machine:in_state("menu") then
-    if inrange(x, 0*safe.w, 0.1*safe.w) and
-       inrange(y, 0*safe.h, 0.1*safe.h) then
+    if expo.inrange(x, 0*safe.w, 0.1*safe.w) and
+       expo.inrange(y, 0*safe.h, 0.1*safe.h) then
       print("about dialog")
     else
       ui_state_machine:set_state("map")
@@ -226,44 +202,61 @@ local function handlepressed(id, x, y, button)
   end
 
   if ui_state_machine:in_state("map") then
-    if inrange(x, 0*safe.w, 0.1*safe.w) and
-       inrange(y, 0*safe.h, 0.1*safe.h) then
+    if expo.inrange(x, 0*safe.w, 0.1*safe.w) and
+       expo.inrange(y, 0*safe.h, 0.1*safe.h) then
       print("back to menu")
       ui_state_machine:set_state("menu")
+    elseif not istouch then
+      expoguia_map.allowdrag = true
     end
   end
 
 end
-local function handlemoved(id, x, y, dx, dy)
+local function handlemoved(id, x, y, dx, dy, istouch)
   if debug then
     print("moved: " .. id .. " x,y: " .. x .. "," .. y .. " dx,dy: " .. dx .. "," .. dy)
   end
 
-  if ui_state_machine:in_state("map") then
-    expoguia_map.x = expoguia_map.x + dx
-    expoguia_map.y = expoguia_map.y + dy
+  if ui_state_machine:in_state("map") and expoguia_map.allowdrag then
+    if istouch then multiplier = 0.5 else multiplier = 1 end
+    expoguia_map.x = expoguia_map.x + dx*multiplier
+    expoguia_map.y = expoguia_map.y + dy*multiplier
   end
-
+end
+local function handlereleased(id, x, y, button, istouch)
+  if debug then
+    print("released: " .. id .. " x,y: " .. x .. "," .. y .. " button: " .. button)
+  end
+  if ui_state_machine:in_state("map") then
+    if not istouch then
+      expoguia_map.allowdrag = false
+    end
+  end
 end
 
 -- input handling
 -- estas funciones específicas activan funciones más generales
 function love.mousepressed(x, y, button, istouch, presses)
-  handlepressed(1, x, y, button)
+  handlepressed(1, x, y, button, false)
+  autolock.timer = 0
 end
 function love.touchpressed(id, x, y, dx, dy, pressure)
-  handlepressed(id, x, y, 1)
+  handlepressed(id, x, y, 1, true)
   overlayStats.handleTouch(id, x, y, dx, dy, pressure) -- Should always be called last
 end
 function love.mousemoved(x, y, dx, dy, istouch)
-  handlemoved(1, x, y, dx, dy)
+  handlemoved(1, x, y, dx, dy, false)
 end
 function love.touchmoved(id, x, y, dx, dy, pressure)
-  handlemoved(id, x, y, dx, dy)
+  handlemoved(id, x, y, dx, dy, true)
+  autolock.timer = 0
 end
 function love.mousereleased(x, y, button, istouch, presses)
+  handlereleased(1, x, y, button, false)
+  autolock.timer = 0
 end
 function love.touchreleased(id, x, y, dx, dy, pressure)
+  handlereleased(id, x, y, 1, true)
 end
 
 -- window resizing
