@@ -1,0 +1,6 @@
+- agregar el botón de filtros
+- hacer que los botones funcionen
+- agregar el sistema de dialogos
+- agregar el renderizado de stands
+- hacer que al tocar los stands salte un dialogo con su información
+- hacer que los stands aparezcan combinados al acercarse demasiado

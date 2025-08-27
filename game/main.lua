@@ -26,8 +26,12 @@ local expoguia_map = {
   png = love.graphics.newImage("assets/images/mapa.png"),
   x = 0,
   y = 0,
+  lx = 0, --lerped x
+  ly = 0, --lerped y
   scale = 1,
-  allowdrag = false
+  allowdrag = false,
+  starting_x = -40,
+  starting_y = -40
 }
 local font_reddit_regular_16 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 16)
 local font_reddit_regular_24 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 24)
@@ -50,6 +54,9 @@ local group_7_png = love.graphics.newImage("assets/images/group-7.png")
 local group_8_png = love.graphics.newImage("assets/images/group-8.png")
 local group_9_png = love.graphics.newImage("assets/images/group-9.png")
 local group_99_png = love.graphics.newImage("assets/images/group-99.png")
+-- button textures
+local recenter_1_png = love.graphics.newImage("assets/images/recenter-1.png")
+local recenter_2_png = love.graphics.newImage("assets/images/recenter-2.png")
 
 -- variables
 local debug = false
@@ -246,6 +253,17 @@ local function draw_always_shown_content()
   floatingui.ly = expo.lerpinout(floatingui.ly, floatingui.y, elapsed)
 
   love.graphics.circle("fill", safe.w-38+floatingui.lx, safe.h-38+floatingui.ly, 24)
+
+
+  local r, g, b, a = expo.hexcolorfromstring(color.text)
+  love.graphics.setColor(r, g, b, a)
+  local scale = 0.18
+  local centered = true -- temporal hasta que logre dar con el clavo xd
+  if not centered then
+    love.graphics.draw(recenter_1_png, safe.w-38+floatingui.lx, safe.h-38+floatingui.ly, 0, scale, scale, 0.5*recenter_1_png:getWidth(), 0.5*recenter_1_png:getHeight())
+  else
+    love.graphics.draw(recenter_2_png, safe.w-38+floatingui.lx, safe.h-38+floatingui.ly, 0, scale, scale, 0.5*recenter_2_png:getWidth(), 0.5*recenter_2_png:getHeight())
+  end
 end
 
 function love.draw()
@@ -312,7 +330,7 @@ local function handlemoved(id, x, y, dx, dy, istouch)
   end
   local multiplier = 0
   if ui_state_machine:in_state("map") and expoguia_map.allowdrag then
-    if istouch then multiplier = 0.5 else multiplier = 1 end
+    if istouch then multiplier = 0.25 else multiplier = 1 end
     expoguia_map.x = expoguia_map.x + dx*multiplier
     expoguia_map.y = expoguia_map.y + dy*multiplier
   end
