@@ -451,7 +451,9 @@ end
 
 local function handlepressed(id, x, y, button, istouch)
   if debug then
-    print("pressed: " .. id .. " x,y: " .. x .. "," .. y .. " button: " .. button)
+    if love.system.getOS() == "Linux" then
+      print("pressed: " .. tostring(id) .. " x,y: " .. x .. "," .. y .. " button: " .. button)
+    end
 
     -- cuentas para sacar las coordenadas en el mapa. suponer que las coordenadas van desde -1000 a 1000, tanto en X como en Y.
     -- guardar estos valores en debug_map_coord_x y debug_map_coord_y
