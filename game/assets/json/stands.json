@@ -1,8 +1,31 @@
 [
   {
+    "x": -6,
+    "y": 433,
+    "texto": "Baño de Hombres",
+    "especialidad": "BH"
+  },
+  {
+    "x": -590,
+    "y": -72,
+    "texto": "Baño de Hombres",
+    "especialidad": "BH"
+  },
+  {
+    "texto": "Baño de Mujeres",
+    "x": 58,
+    "y": 433,
+    "especialidad": "BM"
+  },
+  {
+    "texto": "Baño de Mujeres",
+    "x": -509,
+    "y": -72,
+    "especialidad": "BM"
+  },
+  {
     "x": -130,
     "y": 23,
-    "floor": 1,
     "texto": "Ejemplo de\nConstrucciones",
     "curso": 502,
     "especialidad": "C",
@@ -11,7 +34,6 @@
   {
     "x": 300,
     "y": 150,
-    "floor": 1,
     "texto": "Ejemplo de Electro",
     "curso": 701,
     "especialidad": "E",
@@ -20,7 +42,6 @@
   {
     "x": 200,
     "y": 100,
-    "floor": 2,
     "texto": "Ejemplo de ciclo\nbásico",
     "curso": 301,
     "especialidad": "",
@@ -29,7 +50,6 @@
   {
     "x": 100,
     "y": 100,
-    "floor": 1,
     "texto": "Ejemplo de electro",
     "curso": 701,
     "especialidad": "E",
@@ -38,7 +58,6 @@
   {
     "x": 110,
     "y": 100,
-    "floor": 1,
     "texto": "Ejemplo de IPP",
     "curso": 501,
     "especialidad": "IPP",
@@ -47,7 +66,6 @@
   {
     "x": 200,
     "y": 100,
-    "floor": 2,
     "texto": "Ejemplo de\nConstrucciones",
     "curso": 401,
     "especialidad": "C",
@@ -56,7 +74,6 @@
   {
     "x": 120,
     "y": 100,
-    "floor": 1,
     "texto": "Ejemplo 3",
     "curso": 503,
     "especialidad": "C",
@@ -65,7 +82,6 @@
   {
     "x": 100,
     "y": 90,
-    "floor": 1,
     "texto": "Ejemplo 4",
     "curso": 601,
     "especialidad": "E",
@@ -74,7 +90,6 @@
   {
     "x": 110,
     "y": 90,
-    "floor": 1,
     "texto": "Ejemplo 5",
     "curso": 602,
     "especialidad": "C",
@@ -83,7 +98,6 @@
   {
     "x": 120,
     "y": 90,
-    "floor": 1,
     "texto": "Ejemplo 6",
     "curso": 101,
     "especialidad": "",

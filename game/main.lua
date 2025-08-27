@@ -102,6 +102,38 @@ local autolock = {
   max = 5 -- seconds
 }
 
+-- stands.
+local stands = {}
+local stand_scale = 0.25
+
+-- debería descargarse el nuevo json desde esta url:
+-- "https://raw.githubusercontent.com/germe-deb/expogu-a-ovaltutu-bootstrap/refs/heads/main/game/assets/json/stands.json"
+local jsonFile = love.filesystem.read("assets/json/stands.json")
+if jsonFile then
+  stands = json.decode(jsonFile)
+  stands = expo.automate_stand_id(stands)
+end
+
+-- @param stand table
+-- @return love.Image
+local function get_stand_texture(stand)
+  if stand.especialidad == "E" then
+    return stand_electro_png
+  elseif stand.especialidad == "C" then
+    return stand_construcciones_png
+  elseif stand.especialidad == "IPP" then
+    return stand_ipp_png
+  elseif stand.especialidad == "ESC" then
+    return stand_escape_png
+  elseif stand.especialidad == "BH" then
+    return stand_bath_hombres
+  elseif stand.especialidad == "BM" then
+    return stand_bath_mujeres
+  else
+    return stand_ciclo_basico_png -- textura por defecto
+  end
+end
+
 -- estados
 -- Crear la máquina de estados primero
 local ui_state_machine = StateMachine({}, "menu")
@@ -132,8 +164,10 @@ ui_state_machine:add_state("menu", {
 ui_state_machine:add_state("map", {
   enter = function(self, prev)
     print("entered map")
+    -- setear las posiciones por defecto
     expoguia_map.x, expoguia_map.y = 0.5*safe.w, 0.5*safe.h
     expoguia_map.scale = expo.scale(safe.w, safe.h, expoguia_map.png:getWidth(), expoguia_map.png:getHeight(), 1.1)
+    -- traer la ui flotante a la vista
     floatingui.y = 0
   end,
   exit = function(self)
@@ -143,6 +177,7 @@ ui_state_machine:add_state("map", {
     floatingui.timer = love.timer.getTime()
   end,
   update = function(self, dt)
+    -- actualizar autolock
     if autolock.enabled and not (love.mouse.isDown(1) or love.mouse.isDown(2))then
       autolock.timer = autolock.timer + dt
       if autolock.timer >= autolock.max then
@@ -153,8 +188,24 @@ ui_state_machine:add_state("map", {
     end
   end,
   draw = function(self)
+    -- Dibujar el mapa
     love.graphics.print("map view", 10, 40)
     love.graphics.draw(expoguia_map.png, expoguia_map.x, expoguia_map.y, 0, expoguia_map.scale, expoguia_map.scale, 0.5*expoguia_map.png:getWidth(), 0.5*expoguia_map.png:getHeight())
+
+    -- Renderizar stands
+    for _, stand in ipairs(stands) do
+      local tex = get_stand_texture(stand)
+      -- Convertir coordenadas lógicas a pantalla
+      -- Suponiendo que stand.x y stand.y están en el sistema lógico (-1000 a 1000)
+      local map = expoguia_map
+      local map_w, map_h = map.png:getWidth(), map.png:getHeight()
+      local sx = map.x + ((stand.x + 1000) / 2000) * map_w * map.scale - map_w * map.scale / 2
+      local sy = map.y + ((stand.y + 1000) / 2000) * map_h * map.scale - map_h * map.scale / 2
+
+      -- Dibujar la textura centrada
+      -- love.graphics.draw( drawable, x, y, r, sx, sy, ox, oy, kx, ky )
+      love.graphics.draw(tex, sx, sy, 0, stand_scale, stand_scale, tex:getWidth() / 2, tex:getHeight())
+    end
   end
 })
 
@@ -211,17 +262,6 @@ dialog_state_machine:add_state("stand", {
   end
 })
 
-
--- stands.
-local stands = {}
-
--- debería descargarse el nuevo json desde esta url:
--- "https://raw.githubusercontent.com/germe-deb/expogu-a-ovaltutu-bootstrap/refs/heads/main/game/assets/json/stands.json"
-local jsonFile = love.filesystem.read("assets/json/stands.json")
--- if jsonFile then
-  stands = json.decode(jsonFile)
-  stands = expo.automate_stand_id(stands)
--- end
 
 --- Realiza un zoom logarítmico en el mapa, manteniendo el punto (px, py) fijo en pantalla
 -- @param factor number: factor de multiplicación (>1 para acercar, <1 para alejar)
@@ -451,9 +491,9 @@ end
 
 local function handlepressed(id, x, y, button, istouch)
   if debug then
-    if love.system.getOS() == "Linux" then
-      print("pressed: " .. tostring(id) .. " x,y: " .. x .. "," .. y .. " button: " .. button)
-    end
+    -- if love.system.getOS() == "Linux" then
+    --   print("pressed: " .. tostring(id) .. " x,y: " .. x .. "," .. y .. " button: " .. button)
+    -- end
 
     -- cuentas para sacar las coordenadas en el mapa. suponer que las coordenadas van desde -1000 a 1000, tanto en X como en Y.
     -- guardar estos valores en debug_map_coord_x y debug_map_coord_y
