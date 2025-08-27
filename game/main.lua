@@ -81,6 +81,10 @@ local dialog = {
   title = "",
   borderheight = 48
 }
+if debug then
+  local debug_map_coord_x = 0
+  local debug_map_coord_y = 0
+end
 
 -- colores
 local color = {
@@ -394,7 +398,19 @@ local function draw_always_shown_content()
     local texto = "Filtrar"
     expo.pillbutton(safe.w-14-(24*2)-14+floatingui.lx, safe.h-14+floatingui.ly, texto, font_reddit_regular_16, color.button_idle, color.text, 20, 1, 1)
     ]]
+  -- debug coords
 
+  if debug and debug_map_coord_x then
+
+    local text = "x: " .. debug_map_coord_x .. " y: " .. debug_map_coord_y
+    r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.rectangle("fill", 10, 100, font_reddit_regular_16:getWidth(text), font_reddit_regular_16:getHeight())
+
+    local r, g, b, a = expo.hexcolorfromstring(color.text)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.print(text, 10, 100)
+  end
 end
 
 function love.draw()
@@ -412,7 +428,7 @@ function love.draw()
 
   love.graphics.pop()
   if debug then
-    print("expoguia_map.scale: " .. expoguia_map.scale)
+    -- print("expoguia_map.scale: " .. expoguia_map.scale)
   end
   overlayStats.draw() -- Should always be called last
 end
@@ -436,6 +452,25 @@ end
 local function handlepressed(id, x, y, button, istouch)
   if debug then
     print("pressed: " .. id .. " x,y: " .. x .. "," .. y .. " button: " .. button)
+
+    -- cuentas para sacar las coordenadas en el mapa. suponer que las coordenadas van desde -1000 a 1000, tanto en X como en Y.
+    -- guardar estos valores en debug_map_coord_x y debug_map_coord_y
+
+    -- 1. Ajustar por el offset del mapa
+    local mx = (x - expoguia_map.x) / expoguia_map.scale
+    local my = (y - expoguia_map.y) / expoguia_map.scale
+
+    -- 2. Ajustar por el origen centrado de la imagen
+    local map_w = expoguia_map.png:getWidth()
+    local map_h = expoguia_map.png:getHeight()
+    mx = mx + map_w / 2
+    my = my + map_h / 2
+
+    -- 3. Convertir a sistema lógico (-1000 a 1000)
+    debug_map_coord_x = math.floor((mx / map_w) * 2000 - 1000)
+    debug_map_coord_y = math.floor((my / map_h) * 2000 - 1000)
+
+    print("debug_map_coord_x:", debug_map_coord_x, "debug_map_coord_y:", debug_map_coord_y)
   end
   if ui_state_machine:in_state("menu") then
     if expo.inrange(x, 0*safe.w, 0.1*safe.w) and
@@ -467,7 +502,7 @@ end
 
 local function handlemoved(id, x, y, dx, dy, istouch)
   if debug then
-    print("moved: " .. id .. " x,y: " .. x .. "," .. y .. " dx,dy: " .. dx .. "," .. dy)
+    -- print("moved: " .. id .. " x,y: " .. x .. "," .. y .. " dx,dy: " .. dx .. "," .. dy)
   end
   local multiplier = 0
   if ui_state_machine:in_state("map") and expoguia_map.allowdrag then
@@ -479,7 +514,7 @@ local function handlemoved(id, x, y, dx, dy, istouch)
 end
 local function handlereleased(id, x, y, button, istouch)
   if debug then
-    print("released: " .. id .. " x,y: " .. x .. "," .. y .. " button: " .. button)
+    -- print("released: " .. id .. " x,y: " .. x .. "," .. y .. " button: " .. button)
   end
   if ui_state_machine:in_state("map") then
     if not istouch then
