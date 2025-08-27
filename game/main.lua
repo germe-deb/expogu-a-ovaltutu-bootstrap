@@ -244,17 +244,15 @@ local function draw_always_shown_content()
   -- dibujar el botón de recentrado
   local r, g, b, a = expo.hexcolorfromstring(color.button_idle)
   love.graphics.setColor(r, g, b, a)
-
+  -- timer para la animación
   local elapsed = 0
   if floatingui.timer then
     elapsed = (love.timer.getTime() - floatingui.timer)*2
     if elapsed >= 1 then elapsed = 1 end
   end
   floatingui.ly = expo.lerpinout(floatingui.ly, floatingui.y, elapsed)
-
   love.graphics.circle("fill", safe.w-38+floatingui.lx, safe.h-38+floatingui.ly, 24)
-
-
+  -- ícono
   local r, g, b, a = expo.hexcolorfromstring(color.text)
   love.graphics.setColor(r, g, b, a)
   local scale = 0.18
@@ -264,6 +262,26 @@ local function draw_always_shown_content()
   else
     love.graphics.draw(recenter_2_png, safe.w-38+floatingui.lx, safe.h-38+floatingui.ly, 0, scale, scale, 0.5*recenter_2_png:getWidth(), 0.5*recenter_2_png:getHeight())
   end
+
+  -- botón de Filtros
+  --[[
+    local r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+    love.graphics.setColor(r, g, b, a)
+    -- dibujar un botón estilo píldora.
+    -- vendría siendo un rectángulo con bordes redondeados.
+    -- necesito hacer una función en expoguia.lua porque voy a usar un montón.
+    love.graphics.circle("fill", safe.w-96+floatingui.lx, safe.h-34+floatingui.ly, 20)
+    local texto = "Filtrar"
+    love.graphics.circle("fill", safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34+floatingui.ly, 20)
+    love.graphics.rectangle("fill", safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34-20+floatingui.ly, font_reddit_regular_16:getWidth(texto), 40)
+    love.graphics.setColor(1,1,1,1)
+    love.graphics.print(texto, safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34-font_reddit_regular_16:getHeight()/2+floatingui.ly)
+  ]]
+  local texto = "Filtrar"
+  -- no se entiende nada ya
+  -- expo.pillbutton(safe.w-96-font_reddit_regular_16:getWidth(texto)-20+floatingui.lx, safe.h-34+floatingui.ly, texto, font_reddit_regular_16, {expo.hexcolorfromstring(color.button_idle)}, {1,1,1,1})
+  -- a ver si ahora sale:
+  expo.pillbutton(safe.w-96+floatingui.lx, safe.h-28+floatingui.ly, texto, font_reddit_regular_16, {expo.hexcolorfromstring(color.button_idle)}, {1,1,1,1}, 0, 20, 1, 1)
 end
 
 function love.draw()
@@ -330,7 +348,8 @@ local function handlemoved(id, x, y, dx, dy, istouch)
   end
   local multiplier = 0
   if ui_state_machine:in_state("map") and expoguia_map.allowdrag then
-    if istouch then multiplier = 0.25 else multiplier = 1 end
+    -- por alguna razón en touch el movimiento por defecto es grande y con esto lo intento contrarrestar
+    if istouch then multiplier = 0.2 else multiplier = 1 end
     expoguia_map.x = expoguia_map.x + dx*multiplier
     expoguia_map.y = expoguia_map.y + dy*multiplier
   end

@@ -189,7 +189,41 @@ function expo.inrange(var, a, b)
   return var >= a and var <= b
 end
 
+--- Dibuja un botón tipo píldora (rectángulo con extremos redondeados)
+-- @param x number: posición x del pivote del botón
+-- @param y number: posición y del pivote del botón
+-- @param texto string: texto a mostrar
+-- @param fuente love.Font: fuente a usar
+-- @param bg_color table: {r,g,b,a} color de fondo
+-- @param text_color table: {r,g,b,a} color del texto
+-- @param padding number: padding horizontal (opcional, default 16)
+-- @param radius number: radio de los extremos (opcional, default altura/2)
+-- @param pivot_x number: pivote horizontal (0=izquierda, 0.5=centro, 1=derecha; opcional, default 0)
+-- @param pivot_y number: pivote vertical (0=arriba, 0.5=centro, 1=abajo; opcional, default 0)
+function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, padding, radius, pivot_x, pivot_y)
+  padding = padding or 16
+  pivot_x = pivot_x or 0
+  pivot_y = pivot_y or 0
+  love.graphics.setFont(fuente)
+  local text_w = fuente:getWidth(texto)
+  local text_h = fuente:getHeight()
+  local w = text_w + padding * 2
+  local h = text_h + padding * 0.5
+  radius = radius or h / 2
 
+  local draw_x = x - w * pivot_x
+  local draw_y = y - h * pivot_y
+
+  -- Fondo
+  love.graphics.setColor(bg_color[1], bg_color[2], bg_color[3], bg_color[4])
+  love.graphics.rectangle("fill", draw_x + radius, draw_y, w - 2 * radius, h)
+  love.graphics.circle("fill", draw_x + radius, draw_y + h / 2, radius)
+  love.graphics.circle("fill", draw_x + w - radius, draw_y + h / 2, radius)
+
+  -- Texto
+  love.graphics.setColor(text_color[1], text_color[2], text_color[3], text_color[4])
+  love.graphics.print(texto, draw_x + padding, draw_y + (h - text_h) / 2)
+end
 
 
 return expo
