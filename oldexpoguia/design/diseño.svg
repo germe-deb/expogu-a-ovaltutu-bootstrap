@@ -3180,9 +3180,9 @@
      inkscape:pagecheckerboard="1"
      inkscape:deskcolor="#505050"
      showgrid="false"
-     inkscape:zoom="0.36622795"
-     inkscape:cx="9281.1049"
-     inkscape:cy="476.4792"
+     inkscape:zoom="1.0358491"
+     inkscape:cx="2758.1239"
+     inkscape:cy="1906.1658"
      inkscape:current-layer="g1"
      inkscape:clip-to-page="false"
      inkscape:window-width="1366"
@@ -3262,7 +3262,7 @@
        height="64"
        id="page1"
        inkscape:label="Icon"
-       inkscape:export-filename="../../expoguia-ovaltutu-bootstrap/resources/icon.png"
+       inkscape:export-filename="../../game/assets/images/icon-square.png"
        inkscape:export-xdpi="768"
        inkscape:export-ydpi="768" /><inkscape:page
        x="3284.333"
@@ -9806,7 +9806,7 @@
        height="64"
        x="-2512"
        y="-720"
-       ry="12.147063" /><g
+       ry="0" /><g
        id="g163"
        transform="matrix(0.06099709,0,0,0.06099709,-2283.6408,-615.10679)"><path
          style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill:url(#linearGradient159);stroke:none;stroke-linecap:square;enable-background:accumulate;stop-color:#000000"
