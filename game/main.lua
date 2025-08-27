@@ -12,8 +12,10 @@ json = require("lib/json")
 local class = require("lib/batteries/class")
 local StateMachine = require("lib/batteries/state_machine")
 
--- librería de expoguía
+-- librerías creadas para expoguía
 local expo = require("lib/expoguia")
+local uibuttons = require("lib/uibuttons")
+
 
 -- assets
 local expoguia_title = {
@@ -29,10 +31,13 @@ local expoguia_map = {
   lx = 0, --lerped x
   ly = 0, --lerped y
   scale = 1,
+  minZoom = 0,
+  maxZoom = 6,
   allowdrag = false,
   starting_x = -40,
   starting_y = -40
 }
+
 local font_reddit_regular_16 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 16)
 local font_reddit_regular_24 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 24)
 local font_reddit_regular_32 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 32)
@@ -59,7 +64,8 @@ local recenter_1_png = love.graphics.newImage("assets/images/recenter-1.png")
 local recenter_2_png = love.graphics.newImage("assets/images/recenter-2.png")
 
 -- variables
-local debug = false
+local debug = true
+local last_pinch_dist = nil
 local safe = {x = 0, y = 0, w = 0, h = 0}
 safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 local floatingui = {
@@ -205,19 +211,46 @@ dialog_state_machine:add_state("stand", {
 -- stands.
 local stands = {}
 
+-- debería descargarse el nuevo json desde esta url:
+-- "https://raw.githubusercontent.com/germe-deb/expogu-a-ovaltutu-bootstrap/refs/heads/main/game/assets/json/stands.json"
 local jsonFile = love.filesystem.read("assets/json/stands.json")
 -- if jsonFile then
   stands = json.decode(jsonFile)
   stands = expo.automate_stand_id(stands)
 -- end
 
+--- Realiza un zoom logarítmico en el mapa, manteniendo el punto (px, py) fijo en pantalla
+-- @param factor number: factor de multiplicación (>1 para acercar, <1 para alejar)
+-- @param px, py: punto de referencia en coordenadas de pantalla (por defecto centro)
+local function zoom_map(factor, px, py)
+  local map = expoguia_map
+  local old_scale = map.scale
+  local new_scale = math.max(map.minZoom, math.min(map.maxZoom, old_scale * factor))
+  if new_scale == old_scale then return end
+
+  -- Si no se pasa un punto, usar el centro de la pantalla
+  px = px or safe.w / 2
+  py = py or safe.h / 2
+
+  -- Ajustar la posición para que el punto bajo el cursor quede fijo
+  -- (px - map.x) / old_scale = (px - new_x) / new_scale
+  -- => new_x = px - (px - map.x) * (new_scale / old_scale)
+  map.x = px - (px - map.x) * (new_scale / old_scale)
+  map.y = py - (py - map.y) * (new_scale / old_scale)
+  map.scale = new_scale
+end
+
 function love.load()
   https = runtimeLoader.loadHTTPS()
   -- Your game load here
-  overlayStats.load() -- Should always be called last
 
   -- safearea
   safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
+
+  -- zoom mínimo y máximo del mapa
+  expoguia_map.minZoom = expo.scale(safe.w, safe.h, expoguia_map.png:getWidth(), expoguia_map.png:getHeight(), 0.9)
+  expoguia_map.maxZoom = expo.scale(safe.w, safe.h, expoguia_map.png:getWidth(), expoguia_map.png:getHeight(), 20)
+
 
   -- activate autolock for kiosk devices (pc)
   if love.system.getOS() == "iOS" or love.system.getOS() == "Android" then
@@ -225,6 +258,83 @@ function love.load()
   else
     autolock.enabled = true
   end
+
+  -- button creation
+  -- En love.load, registra el botón así:
+  uibuttons.register{
+    get_rect = function()
+      local texto = "Filtrar"
+      local radius = 20 -- Usa el radio que quieras
+      local text_w = font_reddit_regular_16:getWidth(texto)
+      local total_w = text_w + 2 * radius
+      local total_h = 2 * radius
+      -- Tu fórmula original para el centro del botón:
+      local cx = safe.w - 14 - (24*2) - 14 + floatingui.lx
+      local cy = safe.h - 14 + floatingui.ly
+      -- El área de toque debe ser el rectángulo que contiene el píldora, alineado a la esquina inferior derecha
+      local x = cx - total_w
+      local y = cy - total_h
+      return x, y, total_w, total_h, texto, radius, cx, cy
+    end,
+    draw = function(self)
+      local x, y, w, h, texto, radius, cx, cy = self.get_rect()
+      -- Fondo del botón
+      local bcolor = color.button_idle
+      if self.pressed then
+        bcolor = color.button_pressed
+      else
+        bcolor = color.button_idle
+      end
+      -- Dibuja el botón igual que antes, usando ox=1, oy=1
+      expo.pillbutton(cx, cy, texto, font_reddit_regular_16, bcolor, color.text, radius, 1, 1)
+    end,
+    onpress = function(self)
+      print("Botón Filtrar presionado")
+      -- Aquí puedes abrir el diálogo de filtros, etc.
+    end
+  }
+  uibuttons.register{
+  get_rect = function()
+    local cx = safe.w - 38 + floatingui.lx
+    local cy = safe.h - 38 + floatingui.ly
+    local radius = 24
+    -- Área de toque: rectángulo circunscrito al círculo
+    local x = cx - radius
+    local y = cy - radius
+    local w = radius * 2
+    local h = radius * 2
+    return x, y, w, h, cx, cy, radius
+  end,
+  draw = function(self)
+    local x, y, w, h, cx, cy, radius = self.get_rect()
+    -- Fondo del botón
+    if self.pressed then
+      r, g, b, a = expo.hexcolorfromstring(color.button_pressed)
+    else
+      r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+    end
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.circle("fill", cx, cy, radius)
+    -- Ícono (color.text)
+    r, g, b, a = expo.hexcolorfromstring(color.text)
+    love.graphics.setColor(r, g, b, a)
+    local scale = 0.18
+    local centered = true
+    if not centered then
+      love.graphics.draw(recenter_1_png, cx, cy, 0, scale, scale, 0.5*recenter_1_png:getWidth(), 0.5*recenter_1_png:getHeight())
+    else
+      love.graphics.draw(recenter_2_png, cx, cy, 0, scale, scale, 0.5*recenter_2_png:getWidth(), 0.5*recenter_2_png:getHeight())
+    end
+  end,
+  onpress = function(self)
+    print("Botón de recentrado presionado")
+    -- Aquí pon la lógica de recentrado real si quieres
+    -- floatingui.lx = 0; floatingui.ly = 0
+  end
+}
+
+
+  overlayStats.load() -- Should always be called last
 end
 
 function love.update(dt)
@@ -241,9 +351,6 @@ function love.update(dt)
 end
 
 local function draw_always_shown_content()
-  -- dibujar el botón de recentrado
-  local r, g, b, a = expo.hexcolorfromstring(color.button_idle)
-  love.graphics.setColor(r, g, b, a)
   -- timer para la animación
   local elapsed = 0
   if floatingui.timer then
@@ -251,6 +358,11 @@ local function draw_always_shown_content()
     if elapsed >= 1 then elapsed = 1 end
   end
   floatingui.ly = expo.lerpinout(floatingui.ly, floatingui.y, elapsed)
+
+
+  -- dibujar el botón de recentrado
+  local r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+  love.graphics.setColor(r, g, b, a)
   love.graphics.circle("fill", safe.w-38+floatingui.lx, safe.h-38+floatingui.ly, 24)
   -- ícono
   local r, g, b, a = expo.hexcolorfromstring(color.text)
@@ -263,25 +375,26 @@ local function draw_always_shown_content()
     love.graphics.draw(recenter_2_png, safe.w-38+floatingui.lx, safe.h-38+floatingui.ly, 0, scale, scale, 0.5*recenter_2_png:getWidth(), 0.5*recenter_2_png:getHeight())
   end
 
+  uibuttons.draw()
   -- botón de Filtros
+
   --[[
-    local r, g, b, a = expo.hexcolorfromstring(color.button_idle)
-    love.graphics.setColor(r, g, b, a)
-    -- dibujar un botón estilo píldora.
-    -- vendría siendo un rectángulo con bordes redondeados.
-    -- necesito hacer una función en expoguia.lua porque voy a usar un montón.
-    love.graphics.circle("fill", safe.w-96+floatingui.lx, safe.h-34+floatingui.ly, 20)
+      local r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+      love.graphics.setColor(r, g, b, a)
+      -- dibujar un botón estilo píldora.
+      -- vendría siendo un rectángulo con bordes redondeados.
+      -- necesito hacer una función en expoguia.lua porque voy a usar un montón.
+      love.graphics.circle("fill", safe.w-96+floatingui.lx, safe.h-34+floatingui.ly, 20)
+      local texto = "Filtrar"
+      love.graphics.circle("fill", safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34+floatingui.ly, 20)
+      love.graphics.rectangle("fill", safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34-20+floatingui.ly, font_reddit_regular_16:getWidth(texto), 40)
+      love.graphics.setColor(1,1,1,1)
+      love.graphics.print(texto, safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34-font_reddit_regular_16:getHeight()/2+floatingui.ly)
+
     local texto = "Filtrar"
-    love.graphics.circle("fill", safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34+floatingui.ly, 20)
-    love.graphics.rectangle("fill", safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34-20+floatingui.ly, font_reddit_regular_16:getWidth(texto), 40)
-    love.graphics.setColor(1,1,1,1)
-    love.graphics.print(texto, safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34-font_reddit_regular_16:getHeight()/2+floatingui.ly)
-  ]]
-  local texto = "Filtrar"
-  -- no se entiende nada ya
-  -- expo.pillbutton(safe.w-96-font_reddit_regular_16:getWidth(texto)-20+floatingui.lx, safe.h-34+floatingui.ly, texto, font_reddit_regular_16, {expo.hexcolorfromstring(color.button_idle)}, {1,1,1,1})
-  -- a ver si ahora sale:
-  expo.pillbutton(safe.w-96+floatingui.lx, safe.h-28+floatingui.ly, texto, font_reddit_regular_16, {expo.hexcolorfromstring(color.button_idle)}, {1,1,1,1}, 0, 20, 1, 1)
+    expo.pillbutton(safe.w-14-(24*2)-14+floatingui.lx, safe.h-14+floatingui.ly, texto, font_reddit_regular_16, color.button_idle, color.text, 20, 1, 1)
+    ]]
+
 end
 
 function love.draw()
@@ -298,7 +411,9 @@ function love.draw()
   draw_always_shown_content()
 
   love.graphics.pop()
-
+  if debug then
+    print("expoguia_map.scale: " .. expoguia_map.scale)
+  end
   overlayStats.draw() -- Should always be called last
 end
 
@@ -336,12 +451,20 @@ local function handlepressed(id, x, y, button, istouch)
        expo.inrange(y, 0*safe.h, 0.1*safe.h) then
       print("back to menu")
       ui_state_machine:set_state("menu")
-    elseif not istouch then
-      expoguia_map.allowdrag = true
+    else
+      -- Solo permitir drag si NO se tocó un botón
+      local pressed_button = uibuttons.handle_press(x - safe.x, y - safe.y)
+      if not pressed_button and not istouch then
+        expoguia_map.allowdrag = true
+      end
+      return -- Importante: no llamar dos veces a handle_press
     end
   end
 
+  -- Si no es estado "map", igual chequea botones
+  uibuttons.handle_press(x - safe.x, y - safe.y)
 end
+
 local function handlemoved(id, x, y, dx, dy, istouch)
   if debug then
     print("moved: " .. id .. " x,y: " .. x .. "," .. y .. " dx,dy: " .. dx .. "," .. dy)
@@ -363,7 +486,9 @@ local function handlereleased(id, x, y, button, istouch)
       expoguia_map.allowdrag = false
     end
   end
+  uibuttons.handle_release(x - safe.x, y - safe.y)
 end
+
 
 -- input handling
 -- estas funciones específicas activan funciones más generales
@@ -380,6 +505,23 @@ function love.mousemoved(x, y, dx, dy, istouch)
 end
 function love.touchmoved(id, x, y, dx, dy, pressure)
   handlemoved(id, x, y, dx, dy, true)
+  -- Pinch zoom
+  local touches = love.touch.getTouches()
+  if #touches == 2 then
+    local x1, y1 = love.touch.getPosition(touches[1])
+    local x2, y2 = love.touch.getPosition(touches[2])
+    local dist = math.sqrt((x2-x1)^2 + (y2-y1)^2)
+    if last_pinch_dist then
+      local factor = dist / last_pinch_dist
+      -- Centro del pinch
+      local px = (x1 + x2) / 2 - safe.x
+      local py = (y1 + y2) / 2 - safe.y
+      zoom_map(factor, px, py)
+    end
+    last_pinch_dist = dist
+  else
+    last_pinch_dist = nil
+  end
   autolock.timer = 0
 end
 function love.mousereleased(x, y, button, istouch, presses)
@@ -388,6 +530,17 @@ function love.mousereleased(x, y, button, istouch, presses)
 end
 function love.touchreleased(id, x, y, dx, dy, pressure)
   handlereleased(id, x, y, 1, true)
+end
+
+function love.wheelmoved(x, y)
+  if ui_state_machine:in_state("map") then
+    -- k controla la sensibilidad del zoom (ajusta a gusto)
+    local k = 0.15
+    local factor = math.exp(k * y)
+    local mx, my = love.mouse.getPosition()
+    zoom_map(factor, mx - safe.x, my - safe.y)
+  end
+  autolock.timer = 0
 end
 
 -- window resizing

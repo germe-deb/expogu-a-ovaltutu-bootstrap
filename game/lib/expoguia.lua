@@ -85,29 +85,29 @@ function expo.centeredtext(texto, alix, aliy, fuente, style, contW, contH)
     love.graphics.pop()
 end
 
--- función que crea una ventana.
--- ésta funcion va a ser utilizada para los filtros y para el about.
--- la función va a dibujar un rectángulo blanco, va a dibujar una
--- headerbar sobre éste rectángulo, y dependiendo de qué argumento especial
--- se le pase, va a dibujar la pantalla de filtros o el about.
--- el argumento debe ser "filter" o "about".
--- el segundo argumento debe ser la fuente.
-function expo.renderwindow(windowtype, lfont, sfont)
+-- función que crea un diálogo.
+-- @param x = posición en x
+-- @param y = posición en y
+-- @param w = ancho
+-- @param h = alto
+-- @param title_h = alto del título
+-- @param content = tabla con el contenido de la ventana.
+function expo.dialog(x, y, safe, title_h, content)
     love.graphics.push()
-    local _, _, safe_w, safe_h = love.window.getSafeArea()
-    local w, h = safe_w*0.9, safe_h*0.5
-    local x, y = expo.centered(safe_w, safe_h, w, h)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.rectangle("fill", x, y, w, h)
+    radius = 24
+    title_h = title_h or radius*2
+    -- dibujar la ventana
+    -- establecer el color de fondo
+    -- love.graphics.setColor(r,g,b,a)
+    love.graphics.rectangle("fill", x, y, safe.w, safe.h)
 
     -- dibujar la headerbar
-    love.graphics.setColor(24/255, 38/255, 47/255, 1)
-    love.graphics.rectangle("fill", x, y, w, 60)
+    -- establecer el color del título
+    -- love.graphics.setColor(24/255, 38/255, 47/255, 1)
+    love.graphics.circle("fill", x+radius, y+radius)
+    love.graphics.rectangle("fill", x+radius, y, safe.w-radius*2, title_h)
+    love.graphics.rectangle("fill", x, y+radius, safe.w, title_h-radius)
 
-	-- dark:
-	-- love.graphics.setColor(38/255, 38/255, 38/255, 1)
-    -- white:
-	-- love.graphics.setColor(1, 1, 1, 1)
     if windowtype == "filter" then
 
 		local font = lfont
@@ -182,6 +182,17 @@ function expo.hexcolorfromstring(str)
   local int = str:match('#(%x+)')
   return expo.hexcolor( tonumber(int, 16) )
 end
+--[[
+  function expo.hexcolorfromstring(hex)
+    hex = hex:gsub("#","")
+    return {
+      tonumber("0x"..hex:sub(1,2))/255,
+      tonumber("0x"..hex:sub(3,4))/255,
+      tonumber("0x"..hex:sub(5,6))/255
+    }
+  end
+]]
+
 
 -- funcion que reemplaza lo siguiente:
 -- if var >= a and var <= b then.
@@ -198,31 +209,37 @@ end
 -- @param text_color table: {r,g,b,a} color del texto
 -- @param padding number: padding horizontal (opcional, default 16)
 -- @param radius number: radio de los extremos (opcional, default altura/2)
--- @param pivot_x number: pivote horizontal (0=izquierda, 0.5=centro, 1=derecha; opcional, default 0)
--- @param pivot_y number: pivote vertical (0=arriba, 0.5=centro, 1=abajo; opcional, default 0)
-function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, padding, radius, pivot_x, pivot_y)
-  padding = padding or 16
-  pivot_x = pivot_x or 0
-  pivot_y = pivot_y or 0
+-- @param ox number: pivote horizontal (0=izquierda, 0.5=centro, 1=derecha; opcional, default 0)
+-- @param oy number: pivote vertical (0=arriba, 0.5=centro, 1=abajo; opcional, default 0)
+function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, radius, ox, oy)
+  ox = ox or 0
+  oy = oy or 0
   love.graphics.setFont(fuente)
   local text_w = fuente:getWidth(texto)
   local text_h = fuente:getHeight()
-  local w = text_w + padding * 2
-  local h = text_h + padding * 0.5
-  radius = radius or h / 2
 
-  local draw_x = x - w * pivot_x
-  local draw_y = y - h * pivot_y
+  -- local draw_x = x - w * pivot_x
+  -- local draw_y = y - h * pivot_y
+
+  local total_w = radius*2 + text_w
+  local total_h = radius*2
+
+  -- implementar ox y oy.
+    x = x - ox * (text_w + radius)
+    y = y - oy * (radius)
 
   -- Fondo
-  love.graphics.setColor(bg_color[1], bg_color[2], bg_color[3], bg_color[4])
-  love.graphics.rectangle("fill", draw_x + radius, draw_y, w - 2 * radius, h)
-  love.graphics.circle("fill", draw_x + radius, draw_y + h / 2, radius)
-  love.graphics.circle("fill", draw_x + w - radius, draw_y + h / 2, radius)
+  r, g, b, a = expo.hexcolorfromstring(bg_color)
+  love.graphics.setColor(r, g, b, a)
+  love.graphics.rectangle("fill", x, y-radius, text_w, radius*2)
+  love.graphics.circle("fill", x, y, radius)
+  love.graphics.circle("fill", x+text_w, y, radius)
 
   -- Texto
-  love.graphics.setColor(text_color[1], text_color[2], text_color[3], text_color[4])
-  love.graphics.print(texto, draw_x + padding, draw_y + (h - text_h) / 2)
+  r, g, b, a = expo.hexcolorfromstring(text_color)
+  love.graphics.setColor(r, g, b, a)
+  -- love.graphics.print( text, x, y, r, sx, sy, ox, oy, kx, ky )
+  love.graphics.print(texto, x, y, 0, 1, 1, 0, 0.5*text_h)
 end
 
 
