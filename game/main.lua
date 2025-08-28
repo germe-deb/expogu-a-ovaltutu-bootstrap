@@ -49,6 +49,7 @@ local stand_ciclo_basico_png = love.graphics.newImage("assets/images/stand-ciclo
 local stand_escape_png = love.graphics.newImage("assets/images/stand-escape.png")
 local stand_bath_hombres = love.graphics.newImage("assets/images/stand-bath-hombres.png")
 local stand_bath_mujeres = love.graphics.newImage("assets/images/stand-bath-mujeres.png")
+local stand_expoguia_png = love.graphics.newImage("assets/images/stand-expoguia.png")
 -- groups
 local group_2_png = love.graphics.newImage("assets/images/group-2.png")
 local group_3_png = love.graphics.newImage("assets/images/group-3.png")
@@ -129,6 +130,8 @@ local function get_stand_texture(stand)
     return stand_bath_hombres
   elseif stand.especialidad == "BM" then
     return stand_bath_mujeres
+  elseif stand.especialidad == "expoguia" then
+    return stand_expoguia_png
   else
     return stand_ciclo_basico_png -- textura por defecto
   end
