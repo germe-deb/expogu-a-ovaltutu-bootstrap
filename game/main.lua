@@ -108,12 +108,42 @@ local autolock = {
 local stands = {}
 local stand_scale = 0.25
 
--- debería descargarse el nuevo json desde esta url:
--- "https://raw.githubusercontent.com/germe-deb/expogu-a-ovaltutu-bootstrap/refs/heads/main/game/assets/json/stands.json"
-local jsonFile = love.filesystem.read("assets/json/stands.json")
-if jsonFile then
-  stands = json.decode(jsonFile)
-  stands = expo.automate_stand_id(stands)
+-- En love.load o antes de cargar stands:
+local jsonFile
+-- local download_url = "https://raw.githubusercontent.com/germe-deb/expogu-a-ovaltutu-bootstrap/refs/heads/main/game/assets/json/stands.json"
+local download_url = "https://pastebin.com/raw/jvSE46GV"
+local download_path = "download.json"
+
+local function try_download_json()
+  if not https then
+    print("https library not loaded")
+    return false
+  end
+
+  -- Intenta ambas variantes de retorno
+  local code, body = https.request(download_url, nil, 5)
+  if type(code) == "string" and tonumber(body) then
+    -- Puede estar invertido
+    code, body = tonumber(body), code
+  end
+
+  print("https.request code:", code)
+  if body then print("https.request body (first 100 chars):", body:sub(1, 100)) end
+
+  -- Verifica si la descarga fue exitosa
+  if code == 200 and body and #body > 0 then
+    -- Guardar el archivo descargado
+    local ok = love.filesystem.write(download_path, body)
+    if ok then
+      print("Descarga exitosa de stands.json")
+      return true
+    else
+      print("Error al guardar el archivo descargado")
+    end
+  else
+    print("No se pudo descargar stands.json, usando archivo local.")
+  end
+  return false
 end
 
 -- @param stand table
@@ -295,6 +325,20 @@ end
 
 function love.load()
   https = runtimeLoader.loadHTTPS()
+
+  local ok = try_download_json()
+  if ok then
+    jsonFile = love.filesystem.read(download_path)
+  else
+    -- usando archivo local
+    jsonFile = love.filesystem.read("assets/json/stands.json")
+  end
+
+  if jsonFile then
+    stands = json.decode(jsonFile)
+    stands = expo.automate_stand_id(stands)
+  end
+
   -- Your game load here
 
   -- safearea
