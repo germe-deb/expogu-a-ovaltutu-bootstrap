@@ -100,7 +100,8 @@ local color = {
 local autolock = {
   enabled = false,
   timer = 0,
-  max = 5 -- seconds
+  warn = 55, -- avisar que se va a volver al menú principal
+  max = 60 -- seconds
 }
 
 -- stands.
@@ -208,6 +209,11 @@ ui_state_machine:add_state("map", {
       -- Dibujar la textura centrada
       -- love.graphics.draw( drawable, x, y, r, sx, sy, ox, oy, kx, ky )
       love.graphics.draw(tex, sx, sy, 0, stand_scale, stand_scale, tex:getWidth() / 2, tex:getHeight())
+    end
+
+    -- cartel de aviso del autolock
+    if autolock.timer >= autolock.warn then
+      expo.pillbutton(14, 14, "Volviendo automáticamente al menú.", font_reddit_regular_16, color.background, color.text, 20, 0,0)
     end
   end
 })
@@ -552,7 +558,7 @@ local function handlemoved(id, x, y, dx, dy, istouch)
   local multiplier = 0
   if ui_state_machine:in_state("map") and expoguia_map.allowdrag then
     -- por alguna razón en touch el movimiento por defecto es grande y con esto lo intento contrarrestar
-    if istouch then multiplier = 0.2 else multiplier = 1 end
+    if istouch then multiplier = 0.18 else multiplier = 1 end
     expoguia_map.x = expoguia_map.x + dx*multiplier
     expoguia_map.y = expoguia_map.y + dy*multiplier
   end

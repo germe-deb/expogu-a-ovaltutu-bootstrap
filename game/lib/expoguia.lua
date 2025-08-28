@@ -219,29 +219,27 @@ function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, radius, ox, 
   local text_w = fuente:getWidth(texto)
   local text_h = fuente:getHeight()
 
-  -- local draw_x = x - w * pivot_x
-  -- local draw_y = y - h * pivot_y
+  local total_w = radius * 2 + text_w
+  local total_h = radius * 2
 
-  local total_w = radius*2 + text_w
-  local total_h = radius*2
-
-  -- implementar ox y oy.
-    x = x - ox * (text_w + radius)
-    y = y - oy * (radius)
+  -- Ajustar x, y para que (0,0) sea la esquina superior izquierda del área total
+  x = x - ox * total_w
+  y = y - oy * total_h
 
   -- Fondo
-  r, g, b, a = expo.hexcolorfromstring(bg_color)
+  local r, g, b, a = expo.hexcolorfromstring(bg_color)
   love.graphics.setColor(r, g, b, a)
-  love.graphics.rectangle("fill", x, y-radius, text_w, radius*2)
-  love.graphics.circle("fill", x, y, radius, segment)
-  love.graphics.circle("fill", x+text_w, y, radius, segment)
+  -- Rectángulo central
+  love.graphics.rectangle("fill", x + radius, y, text_w, total_h)
+  -- Círculo izquierdo
+  love.graphics.circle("fill", x + radius, y + radius, radius, segment)
+  -- Círculo derecho
+  love.graphics.circle("fill", x + radius + text_w, y + radius, radius, segment)
 
-  -- Texto
+  -- Texto (centrado verticalmente)
   r, g, b, a = expo.hexcolorfromstring(text_color)
   love.graphics.setColor(r, g, b, a)
-  -- love.graphics.print( text, x, y, r, sx, sy, ox, oy, kx, ky )
-  love.graphics.print(texto, x, y, 0, 1, 1, 0, 0.5*text_h)
+  love.graphics.print(texto, x + radius, y + (total_h - text_h) / 2)
 end
-
 
 return expo
