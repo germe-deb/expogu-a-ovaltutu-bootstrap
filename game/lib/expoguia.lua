@@ -215,6 +215,7 @@ function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, radius, ox, 
   ox = ox or 0
   oy = oy or 0
   love.graphics.setFont(fuente)
+  local segment = 200
   local text_w = fuente:getWidth(texto)
   local text_h = fuente:getHeight()
 
@@ -232,8 +233,8 @@ function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, radius, ox, 
   r, g, b, a = expo.hexcolorfromstring(bg_color)
   love.graphics.setColor(r, g, b, a)
   love.graphics.rectangle("fill", x, y-radius, text_w, radius*2)
-  love.graphics.circle("fill", x, y, radius)
-  love.graphics.circle("fill", x+text_w, y, radius)
+  love.graphics.circle("fill", x, y, radius, segment)
+  love.graphics.circle("fill", x+text_w, y, radius, segment)
 
   -- Texto
   r, g, b, a = expo.hexcolorfromstring(text_color)
