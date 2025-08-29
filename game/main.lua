@@ -189,8 +189,15 @@ ui_state_machine:add_state("menu", {
     expoguia_title.x, expoguia_title.y = 0.5*safe.w, 0.5*safe.h
   end,
   draw = function(self)
+    love.graphics.push()
     love.graphics.print("Menú principal", 10, 40)
+    -- PNG del título
     love.graphics.draw(expoguia_title.png, expoguia_title.x, expoguia_title.y, 0, expoguia_title.scale, expoguia_title.scale, 0.5*expoguia_title.png:getWidth(), 0.5*expoguia_title.png:getHeight())
+    text = "Toca la pantalla para empezar"
+    font = font_reddit_regular_24
+    love.graphics.setFont(font)
+    love.graphics.print(text, safe.w/2, safe.h*0.82, 0, 1,1, font:getWidth(text)/2, font:getHeight()/2)
+    love.graphics.pop()
   end
 })
 
