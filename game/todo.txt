@@ -1,4 +1,4 @@
 - hacer que los botones funcionen
 - agregar el sistema de dialogos
-- hacer que el diálogo de los stands sea lindo
+- emprolijar las tarjetas de los stands
 - hacer que los stands tengan un tamaño fijo (con respecto al mapa) cuando hay poco zoom

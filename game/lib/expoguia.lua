@@ -91,52 +91,50 @@ end
 -- @param w = ancho
 -- @param h = alto
 -- @param title_h = alto del título
--- @param content = tabla con el contenido de la ventana.
-function expo.dialog(x, y, safe, title_h, content)
+-- @param content = tabla con parámetros de la ventana.
+-- @param stands = tabla de los stands.
+function expo.dialog(x, y, safe, content, stands, font_title, font_normal, color)
     love.graphics.push()
-    radius = 24
-    title_h = title_h or radius*2
+    local radius = 24
+    local title_h = radius*2
     -- dibujar la ventana
     -- establecer el color de fondo
-    -- love.graphics.setColor(r,g,b,a)
-    love.graphics.rectangle("fill", x, y, safe.w, safe.h)
+    local r,g,b,a = expo.hexcolorfromstring(color.background)
+    love.graphics.setColor(r,g,b,a)
+    love.graphics.rectangle("fill", x, y+title_h, safe.w, safe.h)
 
     -- dibujar la headerbar
     -- establecer el color del título
-    -- love.graphics.setColor(24/255, 38/255, 47/255, 1)
-    love.graphics.circle("fill", x+radius, y+radius)
+    r,g,b,a = expo.hexcolorfromstring(color.foreground_light)
+    love.graphics.setColor(r,g,b,a)
+    love.graphics.circle("fill", x+radius, y+radius, radius)
+    love.graphics.circle("fill", safe.w-radius, y+radius, radius)
     love.graphics.rectangle("fill", x+radius, y, safe.w-radius*2, title_h)
-    love.graphics.rectangle("fill", x, y+radius, safe.w, title_h-radius)
 
-    if windowtype == "filter" then
+    if content.windowtype == "filtros" then
+      -- dibujar una headerbar más grande
+      love.graphics.rectangle("fill", x, y+radius, safe.w, title_h-radius+4*radius)
 
-		local font = lfont
-		love.graphics.setFont(font)
-        -- dibujar la pantalla de filtros
-        -- aquí va el código para dibujar la pantalla de filtros
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.print("Filtros", x + font:getHeight()*0.3, y + font:getHeight()*0.3)
-        love.graphics.setColor(38/255, 38/255, 38/255, 1)
-		local font = sfont
-		love.graphics.setFont(font)
-    elseif windowtype == "about" then
-        local font = lfont
-		love.graphics.setFont(font)
-		love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.print("Acerca de", x + font:getHeight()*0.3, y + font:getHeight()*0.3)
-		love.graphics.setColor(38/255, 38/255, 38/255, 1)
-		local font = sfont
-		love.graphics.setFont(font)
-		-- texto del about
-		local offsetx = x + font:getHeight()*1.3
-		local offsety = y + 70 + font:getHeight()*0.3
-		local spacing = 22
-		love.graphics.print("Expoguía", offsetx, offsety + 0*spacing)
-		love.graphics.print("Aplicación desarrollada por el alumno Lucia Gianluca, para la EESTn°1.", offsetx, offsety + 1*spacing)
-		love.graphics.print("Esta aplicación está construida sobre el motor de videojuegos Love2D.", offsetx, offsety + 2*spacing)
-		-- love.graphics.print("Esta aplicación está construida sobre el motor de videojuegos Love2D.", offsetx, offsety + 2*spacing)
+      love.graphics.setFont(font_title)
+      -- dibujar la pantalla de filtros
+      -- aquí va el código para dibujar la pantalla de filtros
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.print("Filtros", safe.w*0.5, y + title_h/2, 0, 1,1, font_title:getWidth("Filtros")*0.5, font_title:getHeight()*0.5)
 
-
+      love.graphics.setFont(font_normal)
+      -- botones de la header
+      expo.pillbutton(safe.w*0.5, y+radius*3, "Reestablecer Filtros", font_normal, color.reestablecer, color.text, 18, 0.5, 0.5)
+      -- custom toggle para alternar incluir o excluir
+      r,g,b,a = expo.hexcolorfromstring(color.button_idle)
+      love.graphics.setColor(r,g,b,a)
+      love.graphics.rectangle("fill", x+30, y+radius*4+4, safe.w-60, radius*2-8, radius-4)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.print("Modo:", x+30+radius-4, y+radius*5, 0, 1,1, 0, font_normal:getHeight()*0.5)
+      love.graphics.print("Excluir", safe.w-30-radius+4, y+radius*5, 0, 1,1, font_normal:getWidth("Excluir"), font_normal:getHeight()*0.5)
+      -- love.graphics.print("Incluir", safe.w-30-radius+4, y+radius*5, 0, 1,1, 1, font_normal:getHeight()*0.5)
+    else
+      -- terminar de dibujar la headerbar
+      love.graphics.rectangle("fill", x, y+radius, safe.w, title_h-radius)
     end
     love.graphics.pop()
 end
@@ -179,6 +177,9 @@ function expo.hexcolor(int)
   bit.band(int, 255)/255
 end
 function expo.hexcolorfromstring(str)
+  if not str then
+    return 0, 0, 0, 1 -- Color negro por defecto
+  end
   local int = str:match('#(%x+)')
   return expo.hexcolor( tonumber(int, 16) )
 end

@@ -38,9 +38,9 @@ local expoguia_map = {
   starting_y = -40
 }
 
-local font_reddit_regular_13 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 13)
+local font_reddit_semibold_13 = love.graphics.newFont("assets/fonts/RedditSans-SemiBold.ttf", 13)
 local font_reddit_regular_16 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 16)
-local font_reddit_regular_20 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 20)
+local font_reddit_semibold_20 = love.graphics.newFont("assets/fonts/RedditSans-SemiBold.ttf", 20)
 local font_reddit_regular_24 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 24)
 local font_reddit_regular_29 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 29)
 local font_reddit_regular_32 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 32)
@@ -105,7 +105,8 @@ local color = {
   text = "#ffffffff",
   foreground_light = "#2e2e2eff",
   button_idle = "#404040ff",
-  button_pressed = "#202020ff"
+  button_pressed = "#202020ff",
+  reestablecer = "#cc0000ff"
 }
 
 -- automatic lock for kiosk mode
@@ -228,7 +229,7 @@ ui_state_machine:add_state("menu", {
     font = font_reddit_regular_24
     love.graphics.setFont(font)
     love.graphics.print(text, safe.w/2, safe.h*0.82, 0, 1,1, font:getWidth(text)/2, font:getHeight()/2)
-    font = font_reddit_regular_13
+    font = font_reddit_semibold_13
     love.graphics.setFont(font)
     love.graphics.print(copyright, safe.w/2, safe.h-5, 0, 1,1, font:getWidth(copyright)/2, font:getHeight())
     love.graphics.pop()
@@ -298,7 +299,7 @@ ui_state_machine:add_state("map", {
           love.graphics.print("Profesor: " .. selected_stand.profesor, 20, 80)
         end
         ]]
-      expo.draw_stand(selected_stand, safe, stand_info_top_bg_png, stand_info_top_fg_png, stand_info_bottom_bg_png, stand_info_bottom_fg_png, font_reddit_regular_13, font_reddit_regular_20, font_reddit_regular_29)
+      expo.draw_stand(selected_stand, safe, stand_info_top_bg_png, stand_info_top_fg_png, stand_info_bottom_bg_png, stand_info_bottom_fg_png, font_reddit_semibold_13, font_reddit_semibold_20, font_reddit_regular_29)
     end
 
 
@@ -354,25 +355,18 @@ dialog_state_machine:add_state("about", {
 -- filtros
 dialog_state_machine:add_state("filter", {
   enter = function(self, prev)
-    dialog.y = safe.h*0.15
+    dialog.y = safe.h*0.5
   end,
   exit = function(self)
   end,
   update = function(self, dt)
   end,
   draw = function(self)
-  end
-})
--- stand ("selección")
-dialog_state_machine:add_state("stand", {
-  enter = function(self, prev)
-    dialog.y = safe.h*0.4
-  end,
-  exit = function(self)
-  end,
-  update = function(self, dt)
-  end,
-  draw = function(self)
+    local content = {
+      windowtype = "filtros",
+      mode = "include" -- esto debería ser dinámico
+    }
+    expo.dialog(0, dialog.y, safe, content, stands, font_reddit_regular_29, font_reddit_regular_16, color)
   end
 })
 
@@ -463,6 +457,7 @@ function love.load()
     onpress = function(self)
       print("Botón Filtrar presionado")
       -- Aquí puedes abrir el diálogo de filtros, etc.
+      dialog_state_machine:set_state("filter")
     end
   }
   uibuttons.register{
@@ -518,6 +513,7 @@ function love.update(dt)
   -- safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 
   ui_state_machine:update(dt)
+  dialog_state_machine:update(dt)
   -- Your game update here
   overlayStats.update(dt) -- Should always be called last
 end
@@ -583,6 +579,7 @@ function love.draw()
 
   draw_always_shown_content()
 
+  dialog_state_machine:draw()
   love.graphics.pop()
   if debug then
     -- print("expoguia_map.scale: " .. expoguia_map.scale)
