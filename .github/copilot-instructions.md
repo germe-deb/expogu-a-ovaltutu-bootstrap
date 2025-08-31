@@ -10,6 +10,7 @@ The implementation plan should include the following:
 - A brief description of the problem you're solving
 - A high-level overview of the solution
 - A list of the specific steps you'll take to implement the solution
+- Don't delete comments randomly
 
 ## When helping with modifications or improvements:
 

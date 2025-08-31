@@ -38,8 +38,11 @@ local expoguia_map = {
   starting_y = -40
 }
 
+local font_reddit_regular_13 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 13)
 local font_reddit_regular_16 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 16)
+local font_reddit_regular_20 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 20)
 local font_reddit_regular_24 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 24)
+local font_reddit_regular_29 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 29)
 local font_reddit_regular_32 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 32)
 -- stands y no stands
 local stand_electro_png = love.graphics.newImage("assets/images/stand-electro.png")
@@ -60,11 +63,17 @@ local group_7_png = love.graphics.newImage("assets/images/group-7.png")
 local group_8_png = love.graphics.newImage("assets/images/group-8.png")
 local group_9_png = love.graphics.newImage("assets/images/group-9.png")
 local group_99_png = love.graphics.newImage("assets/images/group-99.png")
+-- tarjetas
+local stand_info_top_fg_png = love.graphics.newImage("assets/images/stand-info-top-fg.png")
+local stand_info_top_bg_png = love.graphics.newImage("assets/images/stand-info-top-bg.png")
+local stand_info_bottom_fg_png = love.graphics.newImage("assets/images/stand-info-bottom-fg.png")
+local stand_info_bottom_bg_png = love.graphics.newImage("assets/images/stand-info-bottom-bg.png")
 -- button textures
 local recenter_1_png = love.graphics.newImage("assets/images/recenter-1.png")
 local recenter_2_png = love.graphics.newImage("assets/images/recenter-2.png")
 
 -- variables
+local copyright = "Copyright © 2025 Lucia Gianluca"
 local debug = true
 local last_pinch_dist = nil
 local safe = {x = 0, y = 0, w = 0, h = 0}
@@ -82,6 +91,9 @@ local dialog = {
   title = "",
   borderheight = 48
 }
+local drag_start_x = 0
+local drag_start_y = 0
+local did_drag = false
 if debug then
   local debug_map_coord_x = 0
   local debug_map_coord_y = 0
@@ -107,10 +119,10 @@ local autolock = {
 -- stands.
 local stands = {}
 local stand_scale = 0.25
+local selected_stand = nil
 
 -- En love.load o antes de cargar stands:
 local jsonFile
--- local download_url = "https://raw.githubusercontent.com/germe-deb/expogu-a-ovaltutu-bootstrap/refs/heads/main/game/assets/json/stands.json"
 local download_url = "https://pastebin.com/raw/jvSE46GV"
 local download_path = "download.json"
 
@@ -168,6 +180,26 @@ local function get_stand_texture(stand)
   end
 end
 
+-- función para detectar si se tocó un stand
+-- cómo funciona: recorre todos los stands y calcula la distancia al punto (px, py).
+-- si la distancia es menor al radio del stand (asumido como círculo), entonces se tocó el stand.
+-- retorna el stand tocado o nil si no se tocó ninguno.
+local function get_stand_at_point(px, py)
+  for _, stand in ipairs(stands) do
+    local tex = get_stand_texture(stand)
+    local map = expoguia_map
+    local map_w, map_h = map.png:getWidth(), map.png:getHeight()
+    local sx = map.x + ((stand.x + 1000) / 2000) * map_w * map.scale - map_w * map.scale / 2
+    local sy = map.y + ((stand.y + 1000) / 2000) * map_h * map.scale - map_h * map.scale / 2
+    local r = tex:getWidth() * stand_scale * 0.5
+    if (px - sx)^2 + (py - sy)^2 <= r^2 then
+      return stand
+    end
+  end
+  return nil
+end
+
+
 -- estados
 -- Crear la máquina de estados primero
 local ui_state_machine = StateMachine({}, "menu")
@@ -190,13 +222,15 @@ ui_state_machine:add_state("menu", {
   end,
   draw = function(self)
     love.graphics.push()
-    love.graphics.print("Menú principal", 10, 40)
     -- PNG del título
     love.graphics.draw(expoguia_title.png, expoguia_title.x, expoguia_title.y, 0, expoguia_title.scale, expoguia_title.scale, 0.5*expoguia_title.png:getWidth(), 0.5*expoguia_title.png:getHeight())
     text = "Toca la pantalla para empezar"
     font = font_reddit_regular_24
     love.graphics.setFont(font)
     love.graphics.print(text, safe.w/2, safe.h*0.82, 0, 1,1, font:getWidth(text)/2, font:getHeight()/2)
+    font = font_reddit_regular_13
+    love.graphics.setFont(font)
+    love.graphics.print(copyright, safe.w/2, safe.h-5, 0, 1,1, font:getWidth(copyright)/2, font:getHeight())
     love.graphics.pop()
   end
 })
@@ -216,6 +250,7 @@ ui_state_machine:add_state("map", {
     if autolock.enabled then autolock.timer = 0 end
     floatingui.timer = 0
     floatingui.timer = love.timer.getTime()
+    selected_stand = nil
   end,
   update = function(self, dt)
     -- actualizar autolock
@@ -230,7 +265,6 @@ ui_state_machine:add_state("map", {
   end,
   draw = function(self)
     -- Dibujar el mapa
-    love.graphics.print("map view", 10, 40)
     love.graphics.draw(expoguia_map.png, expoguia_map.x, expoguia_map.y, 0, expoguia_map.scale, expoguia_map.scale, 0.5*expoguia_map.png:getWidth(), 0.5*expoguia_map.png:getHeight())
 
     -- Renderizar stands
@@ -248,10 +282,44 @@ ui_state_machine:add_state("map", {
       love.graphics.draw(tex, sx, sy, 0, stand_scale, stand_scale, tex:getWidth() / 2, tex:getHeight())
     end
 
+    -- Mostrar info del stand seleccionado
+    if selected_stand then
+      --[[
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.rectangle("fill", 10, 10, 260, 60, 8, 8)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setFont(font_reddit_regular_16)
+        love.graphics.print("x,y: " .. selected_stand.x .. "," .. selected_stand.y, 20, 20)
+        love.graphics.print("Título: " .. (selected_stand.texto or "-"), 20, 40)
+        if selected_stand.curso then
+          love.graphics.print("Curso: " .. selected_stand.curso .. (selected_stand.especialidad or ""), 20, 60)
+        end
+        if selected_stand.profesor then
+          love.graphics.print("Profesor: " .. selected_stand.profesor, 20, 80)
+        end
+        ]]
+      expo.draw_stand(selected_stand, safe, stand_info_top_bg_png, stand_info_top_fg_png, stand_info_bottom_bg_png, stand_info_bottom_fg_png, font_reddit_regular_13, font_reddit_regular_20, font_reddit_regular_29)
+    end
+
+
     -- cartel de aviso del autolock
     if autolock.timer >= autolock.warn then
       expo.pillbutton(14, 14, "Volviendo automáticamente al menú.", font_reddit_regular_16, color.background, color.text, 20, 0,0)
     end
+
+    if debug_map_coord_x then
+
+      local text = "x: " .. debug_map_coord_x .. " y: " .. debug_map_coord_y
+      r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+      love.graphics.setColor(r, g, b, a)
+      love.graphics.rectangle("fill", 10, safe.h-100, font_reddit_regular_16:getWidth(text), font_reddit_regular_16:getHeight())
+
+      local r, g, b, a = expo.hexcolorfromstring(color.text)
+      love.graphics.setColor(r, g, b, a)
+      love.graphics.print(text, 10, safe.h-100)
+    end
+
+
   end
 })
 
@@ -500,17 +568,6 @@ local function draw_always_shown_content()
     ]]
   -- debug coords
 
-  if debug and debug_map_coord_x then
-
-    local text = "x: " .. debug_map_coord_x .. " y: " .. debug_map_coord_y
-    r, g, b, a = expo.hexcolorfromstring(color.button_idle)
-    love.graphics.setColor(r, g, b, a)
-    love.graphics.rectangle("fill", 10, 100, font_reddit_regular_16:getWidth(text), font_reddit_regular_16:getHeight())
-
-    local r, g, b, a = expo.hexcolorfromstring(color.text)
-    love.graphics.setColor(r, g, b, a)
-    love.graphics.print(text, 10, 100)
-  end
 end
 
 function love.draw()
@@ -574,16 +631,15 @@ local function handlepressed(id, x, y, button, istouch)
 
     print("debug_map_coord_x:", debug_map_coord_x, "debug_map_coord_y:", debug_map_coord_y)
   end
-  if ui_state_machine:in_state("menu") then
-    if expo.inrange(x, 0*safe.w, 0.1*safe.w) and
-       expo.inrange(y, 0*safe.h, 0.1*safe.h) then
-      print("about dialog")
-    else
-      ui_state_machine:set_state("map")
-    end
-  end
 
   if ui_state_machine:in_state("map") then
+
+    -- setear variables por defecto
+    drag_start_x = x
+    drag_start_y = y
+    did_drag = false
+
+    -- chequea si tocaste el botón de recentrado
     if expo.inrange(x, 0*safe.w, 0.1*safe.w) and
        expo.inrange(y, 0*safe.h, 0.1*safe.h) then
       print("back to menu")
@@ -613,16 +669,48 @@ local function handlemoved(id, x, y, dx, dy, istouch)
     expoguia_map.x = expoguia_map.x + dx*multiplier
     expoguia_map.y = expoguia_map.y + dy*multiplier
   end
+
+  if not did_drag then
+    local dist = math.abs(x - drag_start_x) + math.abs(y - drag_start_y)
+    -- local dist = math.sqrt((x - drag_start_x)^2 + (y - drag_start_y)^2)
+    if dist > 10 then -- umbral de 10 píxeles
+      did_drag = true
+    else
+      did_drag = false
+    end
+  end
 end
+
 local function handlereleased(id, x, y, button, istouch)
   if debug then
     -- print("released: " .. id .. " x,y: " .. x .. "," .. y .. " button: " .. button)
   end
+
+  if ui_state_machine:in_state("menu") then
+    if expo.inrange(x, 0*safe.w, 0.1*safe.w) and
+       expo.inrange(y, 0*safe.h, 0.1*safe.h) then
+      print("about dialog")
+    else
+      ui_state_machine:set_state("map")
+    end
+  end
+
   if ui_state_machine:in_state("map") then
     if not istouch then
       expoguia_map.allowdrag = false
     end
+
+    -- Primero, chequea si tocaste un stand
+    local stand = get_stand_at_point(x - safe.x, y - safe.y)
+    -- si se tocó un stand y NO se deslizó (drag)
+    if stand and not did_drag then
+      selected_stand = stand
+    else
+      selected_stand = nil
+    end
   end
+
+
   uibuttons.handle_release(x - safe.x, y - safe.y)
 end
 

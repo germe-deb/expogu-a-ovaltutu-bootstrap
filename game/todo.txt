@@ -1,7 +1,4 @@
-
 - hacer que los botones funcionen
 - agregar el sistema de dialogos
-- hacer que al tocar los stands salte un dialogo con su información
-- hacer que los stands aparezcan combinados al acercarse demasiado
-  no sé si esto está bueno. probablemente sea una feature cancelada.
-  en vez de eso, mejor hacer que el tamaño de los stands cambie al hacer demasiado zoom out
+- hacer que el diálogo de los stands sea lindo
+- hacer que los stands tengan un tamaño fijo (con respecto al mapa) cuando hay poco zoom

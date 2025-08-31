@@ -242,4 +242,97 @@ function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, radius, ox, 
   love.graphics.print(texto, x + radius, y + (total_h - text_h) / 2)
 end
 
+-- función para dibujar la tarjeta informativa de un stand.
+function expo.draw_stand(stand, safe, stand_info_top_bg_png, stand_info_top_fg_png, stand_info_bottom_bg_png, stand_info_bottom_fg_png, font_13, font_20, font_29)
+  -- primero, setear los colores y valores
+  -- setear los colores en función de la especialidad
+  local r, g, b, a
+  if stand.especialidad == "E" then
+    r, g, b, a = expo.hexcolorfromstring("#3746d0ff")
+  elseif stand.especialidad == "C" then
+    r, g, b, a = expo.hexcolorfromstring("#cf781dff")
+  elseif stand.especialidad == "IPP" then
+    r, g, b, a = expo.hexcolorfromstring("#24a7aaff")
+  elseif stand.especialidad == "ESC" then
+    r, g, b, a = expo.hexcolorfromstring("#0e8d0aff")
+  elseif stand.especialidad == "BH" or stand.especialidad == "BM" then
+    r, g, b, a = expo.hexcolorfromstring("#475864ff")
+  elseif stand.especialidad == "expoguia" then
+    r, g, b, a = expo.hexcolorfromstring("#212121ff")
+  else
+    r, g, b, a = expo.hexcolorfromstring("#28a06eff")
+  end
+
+  -- dibujar la porción de arriba
+  local scale = expo.scale(math.min(420, safe.w), safe.h, stand_info_top_bg_png:getWidth(), stand_info_top_bg_png:getHeight(), 1)
+  local x, _ = expo.centered(safe.w, safe.h, stand_info_top_bg_png:getWidth()*scale, stand_info_top_bg_png:getHeight()*scale, 0.5, 0)
+  local y = 10
+  love.graphics.setColor(r, g, b, a)
+  love.graphics.draw(stand_info_top_bg_png, x, y, 0, scale, scale)
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.draw(stand_info_top_fg_png, x, y, 0, scale, scale)
+
+
+  -- dibujar el rectángulo blanco del medio
+  -- setear el color a blanco
+  -- dibujar el rectángulo en función a la cantidad de texto
+
+  -- calcular todo el tamaño del texto para hacer el rectangulo correctamente
+  -- desde arriba:
+  -- start = stand_info_top
+  -- end = stand_info_top + 13px + título + 7px + Título + 21px + profesor + 13px
+
+  local w = stand_info_top_bg_png:getWidth()*scale
+  local y = y+ stand_info_top_bg_png:getHeight()*scale
+  local h = 13 + font_13:getHeight() + 7 + font_29:getHeight() + 21 + font_13:getHeight() + 13
+  love.graphics.rectangle("fill", x, y, w, h)
+
+  -- dibujar la porción de abajo
+
+  y = y + h
+  love.graphics.setColor(r, g, b, a)
+  love.graphics.draw(stand_info_bottom_bg_png, x, y, 0, scale, scale)
+  love.graphics.setColor(1, 1, 1, 1)
+  love.graphics.draw(stand_info_bottom_fg_png, x, y, 0, scale, scale)
+
+  -- curso
+  if stand.curso then
+    local padding = 3
+    local rect_bg_x = font_20:getWidth(stand.curso .. (stand.especialidad or "")) + padding*2
+    local rect_bg_y = stand_info_top_bg_png:getHeight()*scale
+
+    love.graphics.setColor(r, g, b, a)
+
+    love.graphics.rectangle("fill", x+w-w*0.2-rect_bg_x, 10, rect_bg_x, rect_bg_y)
+
+    love.graphics.setFont(font_20)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.print(stand.curso .. (stand.especialidad or ""), x+w-w*0.2-rect_bg_x+padding, 10+(rect_bg_y/2), 0, 1,1, 0, 0.5*font_20:getHeight())
+  end
+
+  -- información
+  local xpadding = 10
+  x = x + xpadding
+
+  love.graphics.setColor(0, 0, 0, 1)
+  y = 10 + stand_info_top_bg_png:getHeight()*scale + 13
+
+  love.graphics.setFont(font_13)
+  love.graphics.print("TÍTULO:", x, y)
+
+  y = y + font_13:getHeight() + 7
+
+  love.graphics.setFont(font_29)
+  love.graphics.print(stand.texto, x, y)
+
+  y = y + font_29:getHeight() + 21
+
+  love.graphics.setFont(font_13)
+  love.graphics.print("PROFESOR: " .. (stand.profesor or ""), x, y)
+
+
+
+end
+
+
 return expo
