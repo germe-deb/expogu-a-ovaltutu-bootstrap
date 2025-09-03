@@ -2,6 +2,7 @@
 --
 -- SPDX-License-Identifier: MIT
 
+local Color = require "lib/colors"
 -- Librería de UI hecha para ExpoGuía.
 local expo = {}
 
@@ -99,13 +100,13 @@ function expo.dialog(x, y, safe, content, stands, font_title, font_normal, color
     local title_h = radius*2
     -- dibujar la ventana
     -- establecer el color de fondo
-    local r,g,b,a = expo.hexcolorfromstring(color.background)
+    local r,g,b,a = expo.hexcolorfromstring(Color.background)
     love.graphics.setColor(r,g,b,a)
     love.graphics.rectangle("fill", x, y+title_h, safe.w, safe.h)
 
     -- dibujar la headerbar
     -- establecer el color del título
-    r,g,b,a = expo.hexcolorfromstring(color.foreground_light)
+    r,g,b,a = expo.hexcolorfromstring(Color.foreground_light)
     love.graphics.setColor(r,g,b,a)
     love.graphics.circle("fill", x+radius, y+radius, radius)
     love.graphics.circle("fill", safe.w-radius, y+radius, radius)
@@ -123,15 +124,21 @@ function expo.dialog(x, y, safe, content, stands, font_title, font_normal, color
 
       love.graphics.setFont(font_normal)
       -- botones de la header
-      expo.pillbutton(safe.w*0.5, y+radius*3, "Reestablecer Filtros", font_normal, color.reestablecer, color.text, 18, 0.5, 0.5)
+      expo.pillbutton(safe.w*0.5, y+radius*3, "Reestablecer Filtros", font_normal, Color.reestablecer, Color.text, 18, 0.5, 0.5)
       -- custom toggle para alternar incluir o excluir
-      r,g,b,a = expo.hexcolorfromstring(color.button_idle)
+      r,g,b,a = expo.hexcolorfromstring(Color.button_idle)
       love.graphics.setColor(r,g,b,a)
-      love.graphics.rectangle("fill", x+30, y+radius*4+4, safe.w-60, radius*2-8, radius-4)
+      love.graphics.rectangle("fill", x+30, y+radius*4+4, safe.w-60, radius*1.5, radius*0.75)
       love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.print("Modo:", x+30+radius-4, y+radius*5, 0, 1,1, 0, font_normal:getHeight()*0.5)
-      love.graphics.print("Excluir", safe.w-30-radius+4, y+radius*5, 0, 1,1, font_normal:getWidth("Excluir"), font_normal:getHeight()*0.5)
-      -- love.graphics.print("Incluir", safe.w-30-radius+4, y+radius*5, 0, 1,1, 1, font_normal:getHeight()*0.5)
+      love.graphics.print("Modo:", x+30+radius-4, y+radius*4.75+4, 0, 1,1, 0, font_normal:getHeight()*0.5)
+      love.graphics.print("Excluir", safe.w-30-radius+4, y+radius*4.75+4, 0, 1,1, font_normal:getWidth("Excluir"), font_normal:getHeight()*0.5)
+      local switch_w = 50
+      local switch_h = 25
+      local padding = 8
+      love.graphics.print("Incluir", safe.w-30-radius+4 - font_normal:getWidth("Excluir") - switch_w - padding*2, y+radius*4.75+4, 0, 1,1, font_normal:getWidth("Incluir"), font_normal:getHeight()*0.5)
+      -- dibujar un switch
+      expo.drawtoggle(safe.w-30-radius+4 - font_normal:getWidth("Excluir") - switch_w/2 - padding, y+radius*4.75+4, false, 0.5, 0.5, true)
+
     else
       -- terminar de dibujar la headerbar
       love.graphics.rectangle("fill", x, y+radius, safe.w, title_h-radius)
@@ -241,6 +248,47 @@ function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, radius, ox, 
   r, g, b, a = expo.hexcolorfromstring(text_color)
   love.graphics.setColor(r, g, b, a)
   love.graphics.print(texto, x + radius, y + (total_h - text_h) / 2)
+end
+
+-- función que dibuja un switch o un toggle.
+-- @param x number: posición x del toggle
+-- @param y number: posición y del toggle
+-- @param state boolean: estado del toggle (true=on, false=off)
+-- @param ox number: pivote horizontal
+-- @param oy number: pivote vertical
+-- @param activar colores
+function expo.drawtoggle(x, y, state, ox, oy, colors)
+  ox = ox or 0
+  oy = oy or 0
+  colors = colors or false
+  local w = 50
+  local h = 25
+  local radius = h / 2
+
+  -- dibujar el fondo
+  if colors then
+    if state then
+      -- verde
+      local r, g, b, a = expo.hexcolorfromstring(Color.greentoggle)
+      love.graphics.setColor(r, g, b, a)
+    else
+      -- rojo
+      local r, g, b, a = expo.hexcolorfromstring(Color.redtoggle)
+      love.graphics.setColor(r, g, b, a)
+    end
+  else
+    local r, g, b, a = expo.hexcolorfromstring(Color.button_pressed)
+    love.graphics.setColor(r, g, b, a)
+  end
+  love.graphics.rectangle("fill", x - ox * w, y - oy * h, w, h, radius)
+
+  -- dibujar el circulo (fg)
+  love.graphics.setColor(1,1,1,1)
+  if state == false then
+    x = x -w/2
+  end
+  love.graphics.circle("fill", x+radius, y, radius*0.8)
+
 end
 
 -- función para dibujar la tarjeta informativa de un stand.

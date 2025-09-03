@@ -15,7 +15,7 @@ local StateMachine = require("lib/batteries/state_machine")
 -- librerías creadas para expoguía
 local expo = require("lib/expoguia")
 local uibuttons = require("lib/uibuttons")
-
+local Color = require "lib/colors"
 
 -- assets
 local expoguia_title = {
@@ -98,16 +98,6 @@ if debug then
   local debug_map_coord_x = 0
   local debug_map_coord_y = 0
 end
-
--- colores
-local color = {
-  background = "#212121ff",
-  text = "#ffffffff",
-  foreground_light = "#2e2e2eff",
-  button_idle = "#404040ff",
-  button_pressed = "#202020ff",
-  reestablecer = "#cc0000ff"
-}
 
 -- automatic lock for kiosk mode
 local autolock = {
@@ -305,17 +295,17 @@ ui_state_machine:add_state("map", {
 
     -- cartel de aviso del autolock
     if autolock.timer >= autolock.warn then
-      expo.pillbutton(14, 14, "Volviendo automáticamente al menú.", font_reddit_regular_16, color.background, color.text, 20, 0,0)
+      expo.pillbutton(14, 14, "Volviendo automáticamente al menú.", font_reddit_regular_16, Color.background, Color.text, 20, 0,0)
     end
 
     if debug_map_coord_x then
 
       local text = "x: " .. debug_map_coord_x .. " y: " .. debug_map_coord_y
-      r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+      r, g, b, a = expo.hexcolorfromstring(Color.button_idle)
       love.graphics.setColor(r, g, b, a)
       love.graphics.rectangle("fill", 10, safe.h-100, font_reddit_regular_16:getWidth(text), font_reddit_regular_16:getHeight())
 
-      local r, g, b, a = expo.hexcolorfromstring(color.text)
+      local r, g, b, a = expo.hexcolorfromstring(Color.text)
       love.graphics.setColor(r, g, b, a)
       love.graphics.print(text, 10, safe.h-100)
     end
@@ -445,14 +435,14 @@ function love.load()
     draw = function(self)
       local x, y, w, h, texto, radius, cx, cy = self.get_rect()
       -- Fondo del botón
-      local bcolor = color.button_idle
+      local bcolor = Color.button_idle
       if self.pressed then
-        bcolor = color.button_pressed
+        bcolor = Color.button_pressed
       else
-        bcolor = color.button_idle
+        bcolor = Color.button_idle
       end
       -- Dibuja el botón igual que antes, usando ox=1, oy=1
-      expo.pillbutton(cx, cy, texto, font_reddit_regular_16, bcolor, color.text, radius, 1, 1)
+      expo.pillbutton(cx, cy, texto, font_reddit_regular_16, bcolor, Color.text, radius, 1, 1)
     end,
     onpress = function(self)
       print("Botón Filtrar presionado")
@@ -476,14 +466,14 @@ function love.load()
     local x, y, w, h, cx, cy, radius = self.get_rect()
     -- Fondo del botón
     if self.pressed then
-      r, g, b, a = expo.hexcolorfromstring(color.button_pressed)
+      r, g, b, a = expo.hexcolorfromstring(Color.button_pressed)
     else
-      r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+      r, g, b, a = expo.hexcolorfromstring(Color.button_idle)
     end
     love.graphics.setColor(r, g, b, a)
     love.graphics.circle("fill", cx, cy, radius)
-    -- Ícono (color.text)
-    r, g, b, a = expo.hexcolorfromstring(color.text)
+    -- Ícono (Color.text)
+    r, g, b, a = expo.hexcolorfromstring(Color.text)
     love.graphics.setColor(r, g, b, a)
     local scale = 0.18
     local centered = true
@@ -529,11 +519,11 @@ local function draw_always_shown_content()
 
 
   -- dibujar el botón de recentrado
-  local r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+  local r, g, b, a = expo.hexcolorfromstring(Color.button_idle)
   love.graphics.setColor(r, g, b, a)
   love.graphics.circle("fill", safe.w-38+floatingui.lx, safe.h-38+floatingui.ly, 24)
   -- ícono
-  local r, g, b, a = expo.hexcolorfromstring(color.text)
+  local r, g, b, a = expo.hexcolorfromstring(Color.text)
   love.graphics.setColor(r, g, b, a)
   local scale = 0.18
   local centered = true -- temporal hasta que logre dar con el clavo xd
@@ -547,7 +537,7 @@ local function draw_always_shown_content()
   -- botón de Filtros
 
   --[[
-      local r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+      local r, g, b, a = expo.hexcolorfromstring(Color.button_idle)
       love.graphics.setColor(r, g, b, a)
       -- dibujar un botón estilo píldora.
       -- vendría siendo un rectángulo con bordes redondeados.
@@ -560,7 +550,7 @@ local function draw_always_shown_content()
       love.graphics.print(texto, safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34-font_reddit_regular_16:getHeight()/2+floatingui.ly)
 
     local texto = "Filtrar"
-    expo.pillbutton(safe.w-14-(24*2)-14+floatingui.lx, safe.h-14+floatingui.ly, texto, font_reddit_regular_16, color.button_idle, color.text, 20, 1, 1)
+    expo.pillbutton(safe.w-14-(24*2)-14+floatingui.lx, safe.h-14+floatingui.ly, texto, font_reddit_regular_16, Color.button_idle, Color.text, 20, 1, 1)
     ]]
   -- debug coords
 
@@ -572,7 +562,7 @@ function love.draw()
   love.graphics.setColor(1, 1, 1, 1) -- setear el color a blanco
 
   love.graphics.setFont(font_reddit_regular_16) -- setear la fuente por defecto
-  local r, g, b, a = expo.hexcolorfromstring(color.background)
+  local r, g, b, a = expo.hexcolorfromstring(Color.background)
   love.graphics.setBackgroundColor(r, g, b, a) -- setear el background a negro
   love.graphics.translate(safe.x, safe.y) -- translatear a safe_x y safe_y
   ui_state_machine:draw()
