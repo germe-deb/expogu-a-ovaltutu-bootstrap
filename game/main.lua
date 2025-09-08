@@ -32,13 +32,15 @@ love.graphics.setDefaultFilter("linear", "linear", 16)
 
 -- assets
 local expoguia_title = {
-  png = love.graphics.newImage("assets/images/expoguia-title.png"),
+  png = love.graphics.newImage("assets/images/expoguia-title.png",
+        {mipmaps = true}),
   x = 0,
   y = 0,
   scale = 1
 }
 local expoguia_map = {
   png = love.graphics.newImage("assets/images/mapa.png"),
+        {mipmaps = true},
   x = 0,
   y = 0,
   lx = 0, --lerped x
@@ -462,7 +464,7 @@ dialog_state_machine:add_state("filter", {
       windowtype = "filtros",
       mode = "include" -- esto debería ser dinámico
     }
-    expo.dialog(0, dialog.y, safe, content, stands, font_reddit_regular_29, font_reddit_regular_16, color)
+    expo.dialog(0, dialog.y, safe, content, stands, font_reddit_regular_32, font_reddit_regular_16, Color)
   end
 })
 
@@ -793,14 +795,10 @@ local function handlereleased(id, x, y, button, istouch)
 
   if dialog_state_machine:in_state("filter") then
 		if expo.inrange(x, 0, safe.w) and
-		   expo.inrange(y, 0, 0.5*safe.h) then
-		  -- begin closing
-		  dialog_closing = true
-			-- dialog_state_machine:set_state("idle")
-		else
-			dialog_closing = false
+		   expo.inrange(y, 0, 0.5*safe.h) and
+		   dialog_closing then
+      dialog_state_machine:set_state("idle")
 		end
-		return
   end
 
   if ui_state_machine:in_state("menu") then

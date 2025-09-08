@@ -138,7 +138,7 @@ function expo.dialog(x, y, safe, content, stands, font_title, font_normal, color
       local padding = 8
       love.graphics.print("Incluir", safe.w-30-radius+4 - font_normal:getWidth("Excluir") - switch_w - padding*2, y+radius*4.75+4, 0, 1,1, font_normal:getWidth("Incluir"), font_normal:getHeight()*0.5)
       -- dibujar un switch
-      expo.drawtoggle(safe.w-30-radius+4 - font_normal:getWidth("Excluir") - switch_w/2 - padding, y+radius*4.75+4, false, 0.5, 0.5, true)
+      expo.drawtoggle(safe.w-30-radius+4 - font_normal:getWidth("Excluir") - switch_w/2 - padding, y+radius*4.75+4, false, 0.5, 0.5, false)
 
     else
       -- terminar de dibujar la headerbar
