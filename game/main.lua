@@ -1,7 +1,12 @@
+-- SPDX-FileCopyrightText: 2025 germe-deb <dpkg.luci@protonmail.com>
+--
+-- SPDX-License-Identifier: GPL-3.0-or-later
+
 -- libraries
 
 -- ovaltutu bootstrap things
 https = nil
+local ffi = require("ffi")
 local overlayStats = require("lib.overlayStats")
 local runtimeLoader = require("runtime.loader")
 
@@ -16,6 +21,14 @@ local StateMachine = require("lib/batteries/state_machine")
 local expo = require("lib/expoguia")
 local uibuttons = require("lib/uibuttons")
 local Color = require "lib/colors"
+
+-- agregar un headerbar (un area arrastrable a la ventana)
+-- Gracias EngineerSmith!!!
+local ffi = require("ffi")
+
+
+-- default filtering
+love.graphics.setDefaultFilter("linear", "linear", 16)
 
 -- assets
 local expoguia_title = {
@@ -38,12 +51,15 @@ local expoguia_map = {
   starting_y = -40
 }
 
-local font_reddit_semibold_13 = love.graphics.newFont("assets/fonts/RedditSans-SemiBold.ttf", 13)
+-- fonts
+local font_reddit_regular_13 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 13)
 local font_reddit_regular_16 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 16)
-local font_reddit_semibold_20 = love.graphics.newFont("assets/fonts/RedditSans-SemiBold.ttf", 20)
 local font_reddit_regular_24 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 24)
-local font_reddit_regular_29 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 29)
 local font_reddit_regular_32 = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 32)
+-- stand display fonts
+local font_reddit_stand_small = love.graphics.newFont("assets/fonts/RedditSans-SemiBold.ttf", 36)
+local font_reddit_stand_curso = love.graphics.newFont("assets/fonts/RedditSans-SemiBold.ttf", 52)
+local font_reddit_stand_title = love.graphics.newFont("assets/fonts/RedditSans-Regular.ttf", 74)
 -- stands y no stands
 local stand_electro_png = love.graphics.newImage("assets/images/stand-electro.png")
 local stand_construcciones_png = love.graphics.newImage("assets/images/stand-construcciones.png")
@@ -75,6 +91,7 @@ local recenter_2_png = love.graphics.newImage("assets/images/recenter-2.png")
 -- variables
 local copyright = "Copyright © 2025 Lucia Gianluca"
 local debug = true
+local experimentalheader = false
 local last_pinch_dist = nil
 local safe = {x = 0, y = 0, w = 0, h = 0}
 safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
@@ -99,6 +116,12 @@ if debug then
   local debug_map_coord_y = 0
 end
 
+-- set the icon
+local icon = love.image.newImageData("assets/images/app_icon.png")
+-- local width, height = icon:getDimensions()
+local success = love.window.setIcon( icon )
+
+print("icon applied: " .. tostring(success))
 -- automatic lock for kiosk mode
 local autolock = {
   enabled = false,
@@ -149,8 +172,7 @@ local function try_download_json()
   return false
 end
 
--- @param stand table
--- @return love.Image
+-- stand table
 local function get_stand_texture(stand)
   if stand.especialidad == "E" then
     return stand_electro_png
@@ -182,12 +204,76 @@ local function get_stand_at_point(px, py)
     local map_w, map_h = map.png:getWidth(), map.png:getHeight()
     local sx = map.x + ((stand.x + 1000) / 2000) * map_w * map.scale - map_w * map.scale / 2
     local sy = map.y + ((stand.y + 1000) / 2000) * map_h * map.scale - map_h * map.scale / 2
-    local r = tex:getWidth() * stand_scale * 0.5
+    local r = tex:getWidth() * stand_scale * 0.9
     if (px - sx)^2 + (py - sy)^2 <= r^2 then
       return stand
     end
   end
   return nil
+end
+
+
+-- header bar (just for linux, windows and macos)
+local headerbar = {
+	png = love.graphics.newImage("assets/images/headerbar.png"),
+	-- close_png = love.graphics.newImage("assets/images/headerbar-close.png"),
+	-- back_png = love.graphics.newImage("assets/images/headerbar-back.png"),
+	x = 0,
+	y = 0,
+	w = 1000,
+	h = 38,
+	padding = 6
+}
+if love.system.getOS() == "Linux" and experimentalheader == true then
+	ffi.cdef[[
+	  typedef struct SDL_Window SDL_Window; // https://wiki.libsdl.org/SDL2/SDL_Window
+
+	  typedef enum {
+	    SDL_HITTEST_NORMAL,
+	    SDL_HITTEST_DRAGGABLE,
+	    SDL_HITTEST_RESIZE_TOPLEFT,
+	    SDL_HITTEST_RESIZE_TOP,
+	    SDL_HITTEST_RESIZE_TOPRIGHT,
+	    SDL_HITTEST_RESIZE_RIGHT,
+	    SDL_HITTEST_RESIZE_BOTTOMRIGHT,
+	    SDL_HITTEST_RESIZE_BOTTOM,
+	    SDL_HITTEST_RESIZE_BOTTOMLEFT,
+	    SDL_HITTEST_RESIZE_LEFT
+	  } SDL_HitTestResult; // https://wiki.libsdl.org/SDL2/SDL_HitTestResult
+
+	  typedef struct SDL_Point {
+	    int x;
+	    int y;
+	  } SDL_Point; // https://wiki.libsdl.org/SDL2/SDL_
+
+	  typedef SDL_HitTestResult (__cdecl *SDL_HitTest)(
+	    SDL_Window *win,
+	    const SDL_Point *area,
+	    void* data); // https://wiki.libsdl.org/SDL2/SDL_HitTest
+
+	  int SDL_SetWindowHitTest(SDL_Window *win, SDL_HitTest callback, void *callback_data); // https://wiki.libsdl.org/SDL2/SDL_SetWindowHitTest
+
+	  SDL_Window* SDL_GL_GetCurrentWindow(void); // https://wiki.libsdl.org/SDL2/SDL_GL_GetCurrentWindow
+	]]
+
+	local sdl2 = ffi.load("SDL2")
+	local win = sdl2.SDL_GL_GetCurrentWindow();
+
+	local result = sdl2.SDL_SetWindowHitTest(win, function(win, area, data)
+	  -- Note, this function will be called for EVERY mouse hit, keep it simple.
+	  --  You may want to implement DPI scaling, unless it's a personal project that doesn't need it.
+	  if expo.inrange(area.y, headerbar.y, headerbar.y+headerbar.h) and expo.inrange(area.x, headerbar.x, headerbar.x+headerbar.w) then
+	    return sdl2.SDL_HITTEST_DRAGGABLE
+	  end
+	  return sdl2.SDL_HITTEST_NORMAL
+	end, nil)
+
+	if result ~= 0 then
+	  -- fall back
+	  local w, h, mode = love.window.getMode()
+	  mode.borderless = true
+	  love.window.setMode(w, h, mode)
+	end
 end
 
 
@@ -200,6 +286,10 @@ ui_state_machine:add_state("menu", {
   enter = function(self, prev)
     print("entered menu")
     floatingui.y = 64
+
+		headerbar.x = 0
+		headerbar.y = 0
+    headerbar.h = 26
   end,
   exit = function(self)
     print("exited menu")
@@ -210,6 +300,8 @@ ui_state_machine:add_state("menu", {
   update = function(self, dt)
     expoguia_title.scale = expo.scale(safe.w, safe.h, expoguia_title.png:getWidth(), expoguia_title.png:getHeight(), 0.75)
     expoguia_title.x, expoguia_title.y = 0.5*safe.w, 0.5*safe.h
+
+    headerbar.w = safe.w
   end,
   draw = function(self)
     love.graphics.push()
@@ -219,7 +311,7 @@ ui_state_machine:add_state("menu", {
     font = font_reddit_regular_24
     love.graphics.setFont(font)
     love.graphics.print(text, safe.w/2, safe.h*0.82, 0, 1,1, font:getWidth(text)/2, font:getHeight()/2)
-    font = font_reddit_semibold_13
+    font = font_reddit_regular_13
     love.graphics.setFont(font)
     love.graphics.print(copyright, safe.w/2, safe.h-5, 0, 1,1, font:getWidth(copyright)/2, font:getHeight())
     love.graphics.pop()
@@ -235,6 +327,10 @@ ui_state_machine:add_state("map", {
     expoguia_map.scale = expo.scale(safe.w, safe.h, expoguia_map.png:getWidth(), expoguia_map.png:getHeight(), 1.1)
     -- traer la ui flotante a la vista
     floatingui.y = 0
+
+		headerbar.x = 64
+		headerbar.y = 0
+    headerbar.h = 26
   end,
   exit = function(self)
     print("exited map")
@@ -253,6 +349,8 @@ ui_state_machine:add_state("map", {
         autolock.timer = 0
       end
     end
+
+    headerbar.w = safe.w - headerbar.x
   end,
   draw = function(self)
     -- Dibujar el mapa
@@ -289,7 +387,14 @@ ui_state_machine:add_state("map", {
           love.graphics.print("Profesor: " .. selected_stand.profesor, 20, 80)
         end
         ]]
-      expo.draw_stand(selected_stand, safe, stand_info_top_bg_png, stand_info_top_fg_png, stand_info_bottom_bg_png, stand_info_bottom_fg_png, font_reddit_semibold_13, font_reddit_semibold_20, font_reddit_regular_29)
+      expo.draw_stand(selected_stand, safe,
+      -- stand textures
+      stand_info_top_bg_png, stand_info_top_fg_png,
+      stand_info_bottom_bg_png, stand_info_bottom_fg_png,
+      -- fonts
+      font_reddit_stand_small,
+      font_reddit_stand_curso,
+      font_reddit_stand_title)
     end
 
 
@@ -299,6 +404,7 @@ ui_state_machine:add_state("map", {
     end
 
     if debug_map_coord_x then
+      love.graphics.setFont(font_reddit_regular_16)
 
       local text = "x: " .. debug_map_coord_x .. " y: " .. debug_map_coord_y
       r, g, b, a = expo.hexcolorfromstring(Color.button_idle)
@@ -360,10 +466,9 @@ dialog_state_machine:add_state("filter", {
   end
 })
 
-
 --- Realiza un zoom logarítmico en el mapa, manteniendo el punto (px, py) fijo en pantalla
--- @param factor number: factor de multiplicación (>1 para acercar, <1 para alejar)
--- @param px, py: punto de referencia en coordenadas de pantalla (por defecto centro)
+-- factor number: factor de multiplicación (>1 para acercar, <1 para alejar)
+-- px, py: punto de referencia en coordenadas de pantalla (por defecto centro)
 local function zoom_map(factor, px, py)
   local map = expoguia_map
   local old_scale = map.scale
@@ -400,13 +505,17 @@ function love.load()
 
   -- Your game load here
 
+  -- canvas para la tarjeta de los stands
+  canvasscale = expo.scale(math.min(420, safe.w*0.9), safe.h, stand_info_top_bg_png:getWidth(), stand_info_top_bg_png:getHeight(), 1)
+  canvas = love.graphics.newCanvas(stand_info_top_bg_png:getWidth(), safe.h)
+
+
   -- safearea
   safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 
   -- zoom mínimo y máximo del mapa
   expoguia_map.minZoom = expo.scale(safe.w, safe.h, expoguia_map.png:getWidth(), expoguia_map.png:getHeight(), 0.9)
   expoguia_map.maxZoom = expo.scale(safe.w, safe.h, expoguia_map.png:getWidth(), expoguia_map.png:getHeight(), 20)
-
 
   -- activate autolock for kiosk devices (pc)
   if love.system.getOS() == "iOS" or love.system.getOS() == "Android" then
@@ -499,6 +608,7 @@ function love.update(dt)
 	if dt > 0.07 then
 		dt = 0.07
 	end
+
   -- safearea
   -- safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 
@@ -534,25 +644,6 @@ local function draw_always_shown_content()
   end
 
   uibuttons.draw()
-  -- botón de Filtros
-
-  --[[
-      local r, g, b, a = expo.hexcolorfromstring(Color.button_idle)
-      love.graphics.setColor(r, g, b, a)
-      -- dibujar un botón estilo píldora.
-      -- vendría siendo un rectángulo con bordes redondeados.
-      -- necesito hacer una función en expoguia.lua porque voy a usar un montón.
-      love.graphics.circle("fill", safe.w-96+floatingui.lx, safe.h-34+floatingui.ly, 20)
-      local texto = "Filtrar"
-      love.graphics.circle("fill", safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34+floatingui.ly, 20)
-      love.graphics.rectangle("fill", safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34-20+floatingui.ly, font_reddit_regular_16:getWidth(texto), 40)
-      love.graphics.setColor(1,1,1,1)
-      love.graphics.print(texto, safe.w-96-font_reddit_regular_16:getWidth(texto)+floatingui.lx, safe.h-34-font_reddit_regular_16:getHeight()/2+floatingui.ly)
-
-    local texto = "Filtrar"
-    expo.pillbutton(safe.w-14-(24*2)-14+floatingui.lx, safe.h-14+floatingui.ly, texto, font_reddit_regular_16, Color.button_idle, Color.text, 20, 1, 1)
-    ]]
-  -- debug coords
 
 end
 
@@ -570,6 +661,17 @@ function love.draw()
   draw_always_shown_content()
 
   dialog_state_machine:draw()
+
+	-- draw headerbar if on a supported platform
+	if (love.system.getOS() == "Linux" or love.system.getOS() == "Windows" or love.system.getOS() == "MacOS") and experimentalheader == true then
+		local r,g,b,a = expo.hexcolorfromstring(Color.button_idle)
+		love.graphics.setColor(r,g,b,a)
+		love.graphics.rectangle("fill", headerbar.x, headerbar.y, headerbar.w, headerbar.h)
+
+		local r,g,b,a = expo.hexcolorfromstring(Color.background)
+		love.graphics.setColor(r,g,b,a)
+		love.graphics.draw(headerbar.png, headerbar.x+headerbar.padding, headerbar.y, 0, safe.w-headerbar.x -headerbar.padding*2, 1)
+  end
   love.graphics.pop()
   if debug then
     -- print("expoguia_map.scale: " .. expoguia_map.scale)
@@ -589,11 +691,26 @@ function love.keypressed(key)
     ui_state_machine:set_state("map")
   elseif key == "2" then
     ui_state_machine:set_state("menu")
+	elseif key == "3" then
+		love.window.setPosition(10, 10)
   end
 end
 
 
 local function handlepressed(id, x, y, button, istouch)
+
+  if dialog_state_machine:in_state("filter") then
+		if expo.inrange(x, 0, safe.w) and
+		   expo.inrange(y, 0, 0.5*safe.h) then
+		  -- begin closing
+		  dialog_closing = true
+			-- dialog_state_machine:set_state("idle")
+		else
+			dialog_closing = false
+		end
+		return
+  end
+
   if debug then
     -- if love.system.getOS() == "Linux" then
     --   print("pressed: " .. tostring(id) .. " x,y: " .. x .. "," .. y .. " button: " .. button)
@@ -637,9 +754,10 @@ local function handlepressed(id, x, y, button, istouch)
       if not pressed_button and not istouch then
         expoguia_map.allowdrag = true
       end
-      return -- Importante: no llamar dos veces a handle_press
+      -- return -- Importante: no llamar dos veces a handle_press
     end
   end
+
 
   -- Si no es estado "map", igual chequea botones
   uibuttons.handle_press(x - safe.x, y - safe.y)
@@ -673,6 +791,18 @@ local function handlereleased(id, x, y, button, istouch)
     -- print("released: " .. id .. " x,y: " .. x .. "," .. y .. " button: " .. button)
   end
 
+  if dialog_state_machine:in_state("filter") then
+		if expo.inrange(x, 0, safe.w) and
+		   expo.inrange(y, 0, 0.5*safe.h) then
+		  -- begin closing
+		  dialog_closing = true
+			-- dialog_state_machine:set_state("idle")
+		else
+			dialog_closing = false
+		end
+		return
+  end
+
   if ui_state_machine:in_state("menu") then
     if expo.inrange(x, 0*safe.w, 0.1*safe.w) and
        expo.inrange(y, 0*safe.h, 0.1*safe.h) then
@@ -688,7 +818,7 @@ local function handlereleased(id, x, y, button, istouch)
     end
 
     -- Primero, chequea si tocaste un stand
-    local stand = get_stand_at_point(x - safe.x, y - safe.y)
+    local stand = get_stand_at_point(x - safe.x, y - safe.y + stand_electro_png:getHeight()*0.1)
     -- si se tocó un stand y NO se deslizó (drag)
     if stand and not did_drag then
       selected_stand = stand

@@ -1,12 +1,12 @@
 -- SPDX-FileCopyrightText: 2025 germe-deb <dpkg.luci@protonmail.com>
 --
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: GPL-3.0-or-later
 
 local Color = require "lib/colors"
 -- Librería de UI hecha para ExpoGuía.
 local expo = {}
 
--- Centra un objeto dentro de un contenedor, devolviendo los offsets en X e Y.
+-- Centra un objeto dentro de un contenedor. devuelvo offsets en X e Y.
 -- contW Ancho del contenedor.
 -- contH Alto del contenedor.
 -- bjW Ancho del objeto.
@@ -87,13 +87,14 @@ function expo.centeredtext(texto, alix, aliy, fuente, style, contW, contH)
 end
 
 -- función que crea un diálogo.
--- @param x = posición en x
--- @param y = posición en y
--- @param w = ancho
--- @param h = alto
--- @param title_h = alto del título
--- @param content = tabla con parámetros de la ventana.
--- @param stands = tabla de los stands.
+-- x = posición en x
+-- y = posición en y
+-- safe
+-- content
+-- stands = tabla de los stands.
+-- font_title
+-- font_normal
+-- color
 function expo.dialog(x, y, safe, content, stands, font_title, font_normal, color)
     love.graphics.push()
     local radius = 24
@@ -209,16 +210,16 @@ function expo.inrange(var, a, b)
 end
 
 --- Dibuja un botón tipo píldora (rectángulo con extremos redondeados)
--- @param x number: posición x del pivote del botón
--- @param y number: posición y del pivote del botón
--- @param texto string: texto a mostrar
--- @param fuente love.Font: fuente a usar
--- @param bg_color table: {r,g,b,a} color de fondo
--- @param text_color table: {r,g,b,a} color del texto
--- @param padding number: padding horizontal (opcional, default 16)
--- @param radius number: radio de los extremos (opcional, default altura/2)
--- @param ox number: pivote horizontal (0=izquierda, 0.5=centro, 1=derecha; opcional, default 0)
--- @param oy number: pivote vertical (0=arriba, 0.5=centro, 1=abajo; opcional, default 0)
+-- x number: posición x del pivote del botón
+-- y number: posición y del pivote del botón
+-- texto string: texto a mostrar
+-- fuente love.Font: fuente a usar
+-- bg_color table: {r,g,b,a} color de fondo
+-- text_color table: {r,g,b,a} color del texto
+-- padding number: padding horizontal (opcional, default 16)
+-- radius number: radio de los extremos (opcional, default altura/2)
+-- ox number: pivote horizontal (0=izquierda, 0.5=centro, 1=derecha; opcional, default 0)
+-- oy number: pivote vertical (0=arriba, 0.5=centro, 1=abajo; opcional, default 0)
 function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, radius, ox, oy)
   ox = ox or 0
   oy = oy or 0
@@ -251,12 +252,12 @@ function expo.pillbutton(x, y, texto, fuente, bg_color, text_color, radius, ox, 
 end
 
 -- función que dibuja un switch o un toggle.
--- @param x number: posición x del toggle
--- @param y number: posición y del toggle
--- @param state boolean: estado del toggle (true=on, false=off)
--- @param ox number: pivote horizontal
--- @param oy number: pivote vertical
--- @param activar colores
+-- x number: posición x del toggle
+-- y number: posición y del toggle
+-- state boolean: estado del toggle (true=on, false=off)
+-- ox number: pivote horizontal
+-- oy number: pivote vertical
+-- activar colores
 function expo.drawtoggle(x, y, state, ox, oy, colors)
   ox = ox or 0
   oy = oy or 0
@@ -292,94 +293,99 @@ function expo.drawtoggle(x, y, state, ox, oy, colors)
 end
 
 -- función para dibujar la tarjeta informativa de un stand.
-function expo.draw_stand(stand, safe, stand_info_top_bg_png, stand_info_top_fg_png, stand_info_bottom_bg_png, stand_info_bottom_fg_png, font_13, font_20, font_29)
-  -- primero, setear los colores y valores
-  -- setear los colores en función de la especialidad
-  local r, g, b, a
-  if stand.especialidad == "E" then
-    r, g, b, a = expo.hexcolorfromstring("#3746d0ff")
-  elseif stand.especialidad == "C" then
-    r, g, b, a = expo.hexcolorfromstring("#cf781dff")
-  elseif stand.especialidad == "IPP" then
-    r, g, b, a = expo.hexcolorfromstring("#24a7aaff")
-  elseif stand.especialidad == "ESC" then
-    r, g, b, a = expo.hexcolorfromstring("#0e8d0aff")
-  elseif stand.especialidad == "BH" or stand.especialidad == "BM" then
-    r, g, b, a = expo.hexcolorfromstring("#475864ff")
-  elseif stand.especialidad == "expoguia" then
-    r, g, b, a = expo.hexcolorfromstring("#212121ff")
-  else
-    r, g, b, a = expo.hexcolorfromstring("#28a06eff")
-  end
+function expo.draw_stand(stand, safe, stand_info_top_bg_png, stand_info_top_fg_png, stand_info_bottom_bg_png, stand_info_bottom_fg_png, font_small, font_curso, font_title)
 
-  -- dibujar la porción de arriba
-  local scale = expo.scale(math.min(420, safe.w), safe.h, stand_info_top_bg_png:getWidth(), stand_info_top_bg_png:getHeight(), 1)
-  local x, _ = expo.centered(safe.w, safe.h, stand_info_top_bg_png:getWidth()*scale, stand_info_top_bg_png:getHeight()*scale, 0.5, 0)
-  local y = 10
-  love.graphics.setColor(r, g, b, a)
-  love.graphics.draw(stand_info_top_bg_png, x, y, 0, scale, scale)
-  love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.draw(stand_info_top_fg_png, x, y, 0, scale, scale)
+  canvasscale = expo.scale(math.min(420, safe.w*0.9), safe.h, stand_info_top_bg_png:getWidth(), stand_info_top_bg_png:getHeight(), 1)
 
+  -- usar el canvas
+  love.graphics.setCanvas(canvas)
+    love.graphics.clear(0,0,0,0)
+    love.graphics.setBlendMode("alpha")
 
-  -- dibujar el rectángulo blanco del medio
-  -- setear el color a blanco
-  -- dibujar el rectángulo en función a la cantidad de texto
+    -- primero, setear los colores y valores
+    -- setear los colores en función de la especialidad
+    local r, g, b, a
+    if stand.especialidad == "E" then
+      r, g, b, a = expo.hexcolorfromstring("#3746d0ff")
+    elseif stand.especialidad == "C" then
+      r, g, b, a = expo.hexcolorfromstring("#cf781dff")
+    elseif stand.especialidad == "IPP" then
+      r, g, b, a = expo.hexcolorfromstring("#24a7aaff")
+    elseif stand.especialidad == "ESC" then
+      r, g, b, a = expo.hexcolorfromstring("#0e8d0aff")
+    elseif stand.especialidad == "BH" or stand.especialidad == "BM" then
+      r, g, b, a = expo.hexcolorfromstring("#475864ff")
+    elseif stand.especialidad == "expoguia" then
+      r, g, b, a = expo.hexcolorfromstring("#212121ff")
+    else
+      r, g, b, a = expo.hexcolorfromstring("#28a06eff")
+    end
 
-  -- calcular todo el tamaño del texto para hacer el rectangulo correctamente
-  -- desde arriba:
-  -- start = stand_info_top
-  -- end = stand_info_top + 13px + título + 7px + Título + 21px + profesor + 13px
-
-  local w = stand_info_top_bg_png:getWidth()*scale
-  local y = y+ stand_info_top_bg_png:getHeight()*scale
-  local h = 13 + font_13:getHeight() + 7 + font_29:getHeight() + 21 + font_13:getHeight() + 13
-  love.graphics.rectangle("fill", x, y, w, h)
-
-  -- dibujar la porción de abajo
-
-  y = y + h
-  love.graphics.setColor(r, g, b, a)
-  love.graphics.draw(stand_info_bottom_bg_png, x, y, 0, scale, scale)
-  love.graphics.setColor(1, 1, 1, 1)
-  love.graphics.draw(stand_info_bottom_fg_png, x, y, 0, scale, scale)
-
-  -- curso
-  if stand.curso then
-    local padding = 3
-    local rect_bg_x = font_20:getWidth(stand.curso .. (stand.especialidad or "")) + padding*2
-    local rect_bg_y = stand_info_top_bg_png:getHeight()*scale
-
+    -- dibujar la porción de arriba
+    local scale = expo.scale(canvas:getWidth(), canvas:getHeight(), stand_info_top_bg_png:getWidth(), stand_info_top_bg_png:getHeight(), 1)
     love.graphics.setColor(r, g, b, a)
-
-    love.graphics.rectangle("fill", x+w-w*0.2-rect_bg_x, 10, rect_bg_x, rect_bg_y)
-
-    love.graphics.setFont(font_20)
+    love.graphics.draw(stand_info_top_bg_png, 0, 0, 0, scale, scale)
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print(stand.curso .. (stand.especialidad or ""), x+w-w*0.2-rect_bg_x+padding, 10+(rect_bg_y/2), 0, 1,1, 0, 0.5*font_20:getHeight())
-  end
-
-  -- información
-  local xpadding = 10
-  x = x + xpadding
-
-  love.graphics.setColor(0, 0, 0, 1)
-  y = 10 + stand_info_top_bg_png:getHeight()*scale + 13
-
-  love.graphics.setFont(font_13)
-  love.graphics.print("TÍTULO:", x, y)
-
-  y = y + font_13:getHeight() + 7
-
-  love.graphics.setFont(font_29)
-  love.graphics.print(stand.texto, x, y)
-
-  y = y + font_29:getHeight() + 21
-
-  love.graphics.setFont(font_13)
-  love.graphics.print("PROFESOR: " .. (stand.profesor or ""), x, y)
+    love.graphics.draw(stand_info_top_fg_png, 0, 0, 0, scale, scale)
 
 
+    -- dibujar el rectángulo blanco del medio
+    local w = stand_info_top_bg_png:getWidth()*scale
+    local y = stand_info_top_bg_png:getHeight()*scale
+    local h = 34 + font_small:getHeight() + 17 + font_title:getHeight() + 34
+    if stand.profesor then h = h + 54 + font_small:getHeight() end
+    love.graphics.rectangle("fill", 0, y, w, h)
+
+    -- dibujar la porción de abajo
+
+    y = y + h
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.draw(stand_info_bottom_bg_png, 0, y, 0, scale, scale)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.draw(stand_info_bottom_fg_png, 0, y, 0, scale, scale)
+
+    -- curso
+    if stand.curso then
+      local padding = 5
+      local rect_bg_x = font_curso:getWidth(stand.curso .. (stand.especialidad or "")) + padding*2
+      local rect_bg_y = stand_info_top_bg_png:getHeight()*scale
+
+      love.graphics.setColor(r, g, b, a)
+
+      love.graphics.rectangle("fill", w-w*0.2-rect_bg_x, 0, rect_bg_x, rect_bg_y)
+
+      love.graphics.setFont(font_curso)
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.print(stand.curso .. (stand.especialidad or ""), w-w*0.2-rect_bg_x+padding, (rect_bg_y/2), 0, 1,1, 0, 0.5*font_curso:getHeight())
+    end
+
+    -- información
+    local xpadding = 20
+
+    love.graphics.setColor(0, 0, 0, 1)
+    y = stand_info_top_bg_png:getHeight()*scale + 34
+
+    love.graphics.setFont(font_small)
+    love.graphics.print("TÍTULO:", xpadding, y)
+
+    y = y + font_small:getHeight() + 17
+
+    love.graphics.setFont(font_title)
+    love.graphics.print(stand.texto, xpadding, y)
+
+    if stand.profesor then
+      y = y + font_title:getHeight() + 54
+
+      love.graphics.setFont(font_small)
+      love.graphics.print("PROFESOR: " .. (stand.profesor or ""), xpadding, y)
+    end
+
+  love.graphics.setCanvas()
+
+  love.graphics.setBlendMode("alpha", "premultiplied")
+  love.graphics.setColor(1,1,1,1)
+  love.graphics.draw(canvas, safe.w/2, 12, 0, canvasscale, canvasscale, 0.5*canvas:getWidth(), 0)
+  love.graphics.setBlendMode("alpha")
 
 end
 
