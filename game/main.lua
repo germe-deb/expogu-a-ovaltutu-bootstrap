@@ -200,6 +200,8 @@ end
 -- si la distancia es menor al radio del stand (asumido como círculo), entonces se tocó el stand.
 -- retorna el stand tocado o nil si no se tocó ninguno.
 local function get_stand_at_point(px, py)
+  local closest_stand = nil
+  local min_dist_sq = math.huge
   for _, stand in ipairs(stands) do
     local tex = get_stand_texture(stand)
     local map = expoguia_map
@@ -207,13 +209,14 @@ local function get_stand_at_point(px, py)
     local sx = map.x + ((stand.x + 1000) / 2000) * map_w * map.scale - map_w * map.scale / 2
     local sy = map.y + ((stand.y + 1000) / 2000) * map_h * map.scale - map_h * map.scale / 2
     local r = tex:getWidth() * stand_scale * 0.9
-    if (px - sx)^2 + (py - sy)^2 <= r^2 then
-      return stand
+    local dist_sq = (px - sx)^2 + (py - sy)^2
+    if dist_sq <= r^2 and dist_sq < min_dist_sq then
+      min_dist_sq = dist_sq
+      closest_stand = stand
     end
   end
-  return nil
+  return closest_stand
 end
-
 
 -- header bar (just for linux, windows and macos)
 local headerbar = {
