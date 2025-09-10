@@ -95,6 +95,7 @@ local copyright = "Copyright © 2025 Lucia Gianluca"
 local debug = true
 local experimentalheader = false
 local last_pinch_dist = nil
+local jsondltimer = 0
 local safe = {x = 0, y = 0, w = 0, h = 0}
 safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
 local floatingui = {
@@ -138,7 +139,7 @@ local stand_scale = 0.25
 local selected_stand = nil
 
 -- En love.load o antes de cargar stands:
-local jsonFile
+local jsonFile = 0
 local download_url = "https://pastebin.com/raw/jvSE46GV"
 local download_path = "download.json"
 
@@ -307,6 +308,26 @@ ui_state_machine:add_state("menu", {
     expoguia_title.x, expoguia_title.y = 0.5*safe.w, 0.5*safe.h
 
     headerbar.w = safe.w
+    if jsonFile == 0 and jsondltimer == 3 then
+      if debug then
+        print("starting to download the json")
+      end
+	    local ok = try_download_json()
+	    if ok then
+	      jsonFile = love.filesystem.read(download_path)
+	    else
+	      -- usando archivo local
+	      jsonFile = love.filesystem.read("assets/json/stands.json")
+	    end
+
+	    if jsonFile then
+	      stands = json.decode(jsonFile)
+	      stands = expo.automate_stand_id(stands)
+	    end
+    elseif jsondltimer < 3 then
+      jsondltimer = jsondltimer + 1
+    end
+    
   end,
   draw = function(self)
     love.graphics.push()
@@ -319,6 +340,12 @@ ui_state_machine:add_state("menu", {
     font = font_reddit_regular_13
     love.graphics.setFont(font)
     love.graphics.print(copyright, safe.w/2, safe.h-5, 0, 1,1, font:getWidth(copyright)/2, font:getHeight())
+
+    if jsonFile == 0 then
+      expo.pillbutton(safe.w/2, 22, "Por favor espere, estamos", font_reddit_regular_16, Color.background, Color.text, 8, 0.5,0.5)
+      expo.pillbutton(safe.w/2, 46, "descargando los stands...", font_reddit_regular_16, Color.background, Color.text, 8, 0.5,0.5)
+    end
+    
     love.graphics.pop()
   end
 })
@@ -495,20 +522,6 @@ end
 
 function love.load()
   https = runtimeLoader.loadHTTPS()
-
-  local ok = try_download_json()
-  if ok then
-    jsonFile = love.filesystem.read(download_path)
-  else
-    -- usando archivo local
-    jsonFile = love.filesystem.read("assets/json/stands.json")
-  end
-
-  if jsonFile then
-    stands = json.decode(jsonFile)
-    stands = expo.automate_stand_id(stands)
-  end
-
   -- Your game load here
 
   -- canvas para la tarjeta de los stands
@@ -611,9 +624,10 @@ end
 
 function love.update(dt)
   -- si dt es demasiado alto, limitarlo a 0.07.
-	if dt > 0.07 then
-		dt = 0.07
-	end
+  if dt > 0.07 then
+    dt = 0.07
+  end
+
 
   -- safearea
   -- safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()

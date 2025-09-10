@@ -1,2 +1,4 @@
-- hacer que los botones funcionen
-- agregar el sistema de dialogos
+
+- hacer la interfaz de los filtros
+- hacer que la interfaz se construya automáticamente teniendo en cuenta los stands que hay
+- completar el sistema de dialogos
