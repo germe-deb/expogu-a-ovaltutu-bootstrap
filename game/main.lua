@@ -371,6 +371,7 @@ ui_state_machine:add_state("map", {
       local sx = map.x + ((stand.x + 1000) / 2000) * map_w * map.scale - map_w * map.scale / 2
       local sy = map.y + ((stand.y + 1000) / 2000) * map_h * map.scale - map_h * map.scale / 2
 
+      stand_scale = math.min(0.30, map.scale*0.8)
       -- Dibujar la textura centrada
       -- love.graphics.draw( drawable, x, y, r, sx, sy, ox, oy, kx, ky )
       love.graphics.draw(tex, sx, sy, 0, stand_scale, stand_scale, tex:getWidth() / 2, tex:getHeight())
