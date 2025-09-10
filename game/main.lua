@@ -333,18 +333,20 @@ ui_state_machine:add_state("menu", {
     love.graphics.push()
     -- PNG del título
     love.graphics.draw(expoguia_title.png, expoguia_title.x, expoguia_title.y, 0, expoguia_title.scale, expoguia_title.scale, 0.5*expoguia_title.png:getWidth(), 0.5*expoguia_title.png:getHeight())
-    text = "Toca la pantalla para empezar"
-    font = font_reddit_regular_24
+    if jsonFile == 0 then
+      font = font_reddit_regular_16
+      text = "Por favor espere. Descargando stands..."
+    else
+      font = font_reddit_regular_24
+      text = "Toca la pantalla para empezar"
+    end
     love.graphics.setFont(font)
     love.graphics.print(text, safe.w/2, safe.h*0.82, 0, 1,1, font:getWidth(text)/2, font:getHeight()/2)
+
     font = font_reddit_regular_13
     love.graphics.setFont(font)
     love.graphics.print(copyright, safe.w/2, safe.h-5, 0, 1,1, font:getWidth(copyright)/2, font:getHeight())
 
-    if jsonFile == 0 then
-      expo.pillbutton(safe.w/2, 22, "Por favor espere, estamos", font_reddit_regular_16, Color.background, Color.text, 8, 0.5,0.5)
-      expo.pillbutton(safe.w/2, 46, "descargando los stands...", font_reddit_regular_16, Color.background, Color.text, 8, 0.5,0.5)
-    end
     
     love.graphics.pop()
   end
