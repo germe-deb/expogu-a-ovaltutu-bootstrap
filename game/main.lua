@@ -406,7 +406,7 @@ ui_state_machine:add_state("map", {
 
     -- cartel de aviso del autolock
     if autolock.timer >= autolock.warn then
-      expo.pillbutton(14, 14, "Volviendo automáticamente al menú.", font_reddit_regular_16, Color.background, Color.text, 20, 0,0)
+      expo.pillbutton(safe.w/2, safe.h/2, "Volviendo automáticamente al menú.", font_reddit_regular_16, Color.background, Color.text, 20, 0.5,0.5)
     end
 
     if debug_map_coord_x then
