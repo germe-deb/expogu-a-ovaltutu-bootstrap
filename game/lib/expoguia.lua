@@ -230,9 +230,9 @@ function expo.dialog(x, y, safe, content, stands, font_title, font_normal, color
 
       -- Dibujar el toggle basado en filter_mode
       if filter_mode == "include" then
-        expo.drawtoggle(safe.w - 30 - radius + 4 - font_normal:getWidth("Excluir") - switch_w / 2 - padding, y + radius * 4.75 + 4, false, 0.5, 0.5, false)
-      else
         expo.drawtoggle(safe.w - 30 - radius + 4 - font_normal:getWidth("Excluir") - switch_w / 2 - padding, y + radius * 4.75 + 4, true, 0.5, 0.5, false)
+      else
+        expo.drawtoggle(safe.w - 30 - radius + 4 - font_normal:getWidth("Excluir") - switch_w / 2 - padding, y + radius * 4.75 + 4, false, 0.5, 0.5, false)
       end
     else
       love.graphics.rectangle("fill", x, y + radius, safe.w, title_h - radius)
