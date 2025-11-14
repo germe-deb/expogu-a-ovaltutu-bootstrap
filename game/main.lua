@@ -88,6 +88,7 @@ local stand_info_bottom_fg_png = love.graphics.newImage("assets/images/stand-inf
 local stand_info_bottom_bg_png = love.graphics.newImage("assets/images/stand-info-bottom-bg.png")
 -- button textures
 local back_png = love.graphics.newImage("assets/images/back.png")
+local reload_png = love.graphics.newImage("assets/images/reload.png")
 -- variables
 local copyright = "Copyright © 2025 Lucia Gianluca"
 local debug = false
@@ -111,8 +112,19 @@ local dialog = {
   title = "",
   borderheight = 48,
   dragging = false,
+  is_pressed = false,  -- Rastrear si el botón del mouse/touch está presionado
+  scroll_started = false,  -- Rastrear si el scroll ya comenzó
   min_y = safe.h*0.1,
-  max_y = safe.h*0.7
+  max_y = safe.h*0.7,
+  scroll_y = 0,
+  buttons = {},
+  canvas = nil,
+  -- Dimensiones dinámicas del contenido
+  content_width = 0,
+  content_x = 0,
+  content_y = 0,
+  content_height = 0,
+  content_top = 0
 }
 Filtros = {
   exclude = false,
@@ -123,6 +135,9 @@ Filtros = {
 local drag_start_x = 0
 local drag_start_y = 0
 local did_drag = false
+local pressed_filter_button = nil  -- Rastrear qué botón de filtro fue presionado
+local pressed_dialog_button = nil  -- Rastrear qué botón del diálogo fue presionado
+local filter_mode = "include"  -- Modo de filtrado: "include" o "exclude"
 if debug then
   local debug_map_coord_x = 0
   local debug_map_coord_y = 0
@@ -291,7 +306,7 @@ end
 -- FUNCIÓN: isStandFiltered
 -- ========================================
 -- Determina si un stand debe mostrarse con opacidad normal o reducida
--- según los filtros actuales.
+-- según los filtros actuales y el modo de filtrado.
 --
 -- Parámetros:
 --   standId (string|number): ID del stand a verificar (ej: "403E", "101")
@@ -299,10 +314,12 @@ end
 -- Funcionamiento:
 --   1. Recorre todas las categorías de filtros
 --   2. Verifica si el stand está seleccionado en alguna categoría
---   3. Retorna true si el stand PASA el filtro (debe mostrarse normal)
---   4. Retorna false si el stand NO pasa el filtro (debe mostrarse opaco)
+--   3. Según filter_mode:
+--      - "include": muestra SOLO los stands seleccionados
+--      - "exclude": muestra TODOS EXCEPTO los stands seleccionados
+--   4. Si no hay stands seleccionados, muestra todos
 --
--- Retorna: boolean - true si el stand coincide con los filtros, false si no
+-- Retorna: boolean - true si el stand debe mostrarse normal, false si debe atenuarse
 local function isStandFiltered(standId)
   -- Crear una tabla para guardar qué stands están seleccionados
   local selectedStands = {}
@@ -324,8 +341,17 @@ local function isStandFiltered(standId)
   -- Convertir standId a string para comparar
   standId = tostring(standId)
 
-  -- Retornar true si el stand está seleccionado (pasa el filtro)
-  return selectedStands[standId] == true
+  -- Verificar si el stand está en la tabla de seleccionados
+  local isSelected = selectedStands[standId] == true
+
+  -- Aplicar lógica según el modo de filtrado
+  if filter_mode == "include" then
+    -- Modo "include": mostrar SOLO los stands seleccionados
+    return isSelected
+  else
+    -- Modo "exclude": mostrar TODOS EXCEPTO los stands seleccionados
+    return not isSelected
+  end
 end
 
 -- ========================================
@@ -461,6 +487,47 @@ function applyFilters(allStands, UI, mode)
     -- Devolver la lista filtrada
     return filtered
 end
+
+-- ========================================
+-- FUNCIÓN: resetFilters
+-- ========================================
+-- Desactiva todos los filtros (stands y categorías).
+-- Recorre todas las categorías y establece todos los stands en false.
+--
+-- Funcionamiento:
+--   1. Recorre todas las categorías en filters_ui
+--   2. Para cada categoría, establece selected en false
+--   3. Para cada stand en la categoría, establece su estado en false
+--
+-- Retorna: void
+local function resetFilters()
+  for _, cat in pairs(filters_ui.categories) do
+    cat.selected = false
+    for stand, _ in pairs(cat.stands) do
+      cat.stands[stand] = false
+    end
+  end
+end
+
+-- ========================================
+-- FUNCIÓN: toggleFilterMode
+-- ========================================
+-- Alterna el modo de filtrado entre "include" (incluir) y "exclude" (excluir).
+--
+-- Funcionamiento:
+--   1. Invierte el modo actual
+--   2. Si era "include", cambia a "exclude"
+--   3. Si era "exclude", cambia a "include"
+--
+-- Retorna: void
+local function toggleFilterMode()
+  if filter_mode == "include" then
+    filter_mode = "exclude"
+  else
+    filter_mode = "include"
+  end
+end
+
 
 -- header bar (just for linux, windows and macos)
 local headerbar = {
@@ -867,23 +934,74 @@ dialog_state_machine:add_state("about", {
 -- filtros
 dialog_state_machine:add_state("filter", {
   enter = function(self, prev)
-    dialog.y = safe.h*0.5
-    dialog.min_y = safe.h*0.2
-    dialog.max_y = safe.h*0.8
+    dialog.y = safe.h * 0.5
+    dialog.min_y = safe.h * 0.2
+    dialog.max_y = safe.h * 0.8
+    dialog.scroll_y = 0
+    dialog.dragging = false
+    -- Construir los botones de filtros con el ancho completo
+    dialog.buttons = expo.build_filter_buttons(filters_ui, filters_data, safe.w)
   end,
   exit = function(self)
+    dialog.scroll_y = 0
+    dialog.dragging = false
+    dialog.scroll_started = false
   end,
   update = function(self, dt)
     if ui_state_machine:in_state("menu") then
       dialog_state_machine:set_state("idle")
     end
+    -- Recalcular dimensiones dinámicamente cada frame
+    -- Usar ancho completo (sin padding lateral en el área clickeable)
+    dialog.content_width = safe.w
+    dialog.content_x = 0
+
+    local radius = 24
+    local full_header_height = radius * 6
+
+    dialog.content_top = dialog.y + full_header_height
+    dialog.content_y = dialog.content_top
+    dialog.content_height = safe.h - dialog.content_y
   end,
   draw = function(self)
     local content = {
       windowtype = "filtros",
-      mode = "include" -- esto debería ser dinámico
+      mode = filter_mode
     }
-    expo.dialog(0, dialog.y, safe, content, stands, font_reddit_regular_32, font_reddit_regular_16, Color)
+
+    -- Dibujar el canvas con los filtros
+    expo.draw_filter_canvas(
+      dialog.canvas,
+      filters_ui,
+      filters_data,
+      font_reddit_regular_16,
+      Color,
+      dialog.scroll_y,
+      dialog.content_width
+    )
+
+    -- Dibujar el diálogo
+    expo.dialog(
+      0,
+      dialog.y,
+      safe,
+      content,
+      stands,
+      font_reddit_regular_32,
+      font_reddit_regular_16,
+      Color,
+      filters_ui,
+      filters_data,
+      toggleCategory,
+      toggleStand,
+      filter_mode
+    )
+
+    -- Dibujar el canvas en pantalla sin clipping (el canvas es lo suficientemente grande)
+    if dialog.canvas then
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.draw(dialog.canvas, dialog.content_x, dialog.content_y)
+    end
   end,
   handle_press = function(self)
   end,
@@ -923,6 +1041,28 @@ local function zoom_map(factor, px, py)
   map.scale = new_scale
 end
 
+-- ========================================
+-- FUNCIÓN: reloadJson
+-- ========================================
+-- Recarga el archivo JSON de stands y categorías.
+-- Reinicia el proceso de descarga y limpia los filtros.
+--
+-- Funcionamiento:
+--   1. Resetea jsonFile para forzar recarga
+--   2. Resetea jsondltimer para reiniciar la cuenta regresiva
+--   3. Limpia los filtros actuales
+--   4. Regresa al estado de menú para mostrar pantalla de carga
+--
+-- Retorna: void
+local function reloadJson()
+  jsonFile = 0
+  jsondltimer = 0
+  errorOffline = false
+  filters_ui.categories = {}
+  filters_data = nil
+  ui_state_machine:set_state("menu")
+end
+
 function love.load()
   https = runtimeLoader.loadHTTPS()
   -- Your game load here
@@ -930,6 +1070,10 @@ function love.load()
   -- canvas para la tarjeta de los stands
   canvasscale = expo.scale(math.min(420, safe.w*0.9), safe.h, stand_info_top_bg_png:getWidth(), stand_info_top_bg_png:getHeight(), 1)
   canvas = love.graphics.newCanvas(stand_info_top_bg_png:getWidth(), safe.h)
+
+  -- canvas para los filtros (scrolleable)
+  -- Usar dimensiones completas de la pantalla para máxima flexibilidad
+  dialog.canvas = love.graphics.newCanvas(safe.w, safe.h)
 
 
   -- safearea
@@ -1031,6 +1175,48 @@ function love.load()
 
   }
 
+
+  -- boton de recargar json
+  uibuttons.register{
+    get_rect = function()
+      local cx = safe.x + 38 - floatingui.lx + 38*2
+      local cy = safe.y + 38 - floatingui.ly
+      local radius = 24
+      -- Área de toque: rectángulo circunscrito al círculo
+      local x = cx - radius
+      local y = cy - radius
+      local w = radius * 2
+      local h = radius * 2
+      return x, y, w, h, cx, cy, radius
+    end,
+    draw = function(self)
+      local x, y, w, h, cx, cy, radius = self.get_rect()
+      -- Fondo del botón
+      if self.pressed then
+        r, g, b, a = expo.hexcolorfromstring(Color.button_pressed)
+      else
+        r, g, b, a = expo.hexcolorfromstring(Color.button_idle)
+      end
+      love.graphics.setColor(r, g, b, a)
+      love.graphics.circle("fill", cx, cy, radius)
+      -- Ícono (Color.text)
+      r, g, b, a = expo.hexcolorfromstring(Color.text)
+      love.graphics.setColor(r, g, b, a)
+      local scale = 0.30
+      love.graphics.draw(reload_png, cx, cy, 0, scale, scale, 0.5*reload_png:getWidth(), 0.5*reload_png:getHeight())
+
+    end,
+    onpress = function(self)
+      -- print("")
+    end,
+    onrelease = function(self)
+      print("recargar json!")
+      reloadJson()
+      -- ui_state_machine:set_state("menu") -- esto lo hará automáticamente el reloadJson()
+    end
+
+  }
+
   overlayStats.load() -- Should always be called last
 end
 
@@ -1127,8 +1313,6 @@ local function handlepressed(id, x, y, button, istouch)
   -- ========================================
   -- PROCESAR ENTRADA DE BOTONES DE UI
   -- ========================================
-  -- Detectar si se presionó algún botón registrado (Filtrar, Volver, etc.)
-  -- Retorna el botón presionado o nil
   local pressed_button = uibuttons.handle_press(x - safe.x, y - safe.y)
 
   -- Notificar a las máquinas de estado sobre la entrada
@@ -1139,37 +1323,110 @@ local function handlepressed(id, x, y, button, istouch)
   -- MANEJAR ENTRADA EN DIÁLOGO DE FILTROS
   -- ========================================
   if dialog_state_machine:in_state("filter") then
-    -- Detectar si el toque está fuera del diálogo (en el área oscura superior)
-    -- Si es así, marcar que el usuario quiere cerrar el diálogo
-		if expo.inrange(x, 0, safe.w) and
-		   expo.inrange(y, 0, dialog.y) then
-		  -- El usuario tocó fuera del diálogo, permitir cerrar
-		  dialog_closing = true
-		else
-		  -- El usuario tocó dentro del diálogo
-			dialog_closing = false
+    -- Marcar que se presionó el botón (para arrastre)
+    dialog.is_pressed = true
+
+    -- Dimensiones del canvas de filtros (deben coincidir con draw y handlemoved)
+    local content_x = dialog.content_x
+    local content_y = dialog.content_y
+    local content_w = dialog.content_width
+    local content_h = dialog.content_height
+    local radius = 24
+
+    -- ========================================
+    -- DETECTAR CLICS EN BOTONES DEL HEADER
+    -- ========================================
+    local radius = 24
+
+    -- Botón "Reestablecer Filtros" - ubicado en el centro superior
+    -- Las dimensiones se basan en el dibujado en expo.dialog()
+    local reset_btn_y = dialog.y + radius * 3
+    local reset_btn_h = radius * 1.5
+    local reset_btn_text = "Reestablecer Filtros"
+    local reset_btn_w = font_reddit_regular_16:getWidth(reset_btn_text) + 2 * 18
+    local reset_btn_x = safe.w * 0.5 - reset_btn_w * 0.5
+
+    if expo.inrange(x, reset_btn_x, reset_btn_x + reset_btn_w) and
+       expo.inrange(y, reset_btn_y, reset_btn_y + reset_btn_h) then
+      pressed_dialog_button = "reset_filters"
+      return
     end
 
-    -- Detectar si el usuario tocó el botón de incluir/excluir
-    local radius = 24
-    if expo.inrange(x, 30, safe.w-60) and
-       expo.inrange(y, dialog.y+radius*4+4, radius*1.5) then
-      -- Alternar el modo de filtrado (incluir <-> excluir)
-      if Filtros.exclude then
-        Filtros.exclude = false
-      else
-        Filtros.exclude = true
+    -- Botón de modo toggle (Incluir/Excluir)
+    -- Se encuentra en una línea debajo del botón de reset
+    local toggle_y = dialog.y + radius * 4 + 4
+    local toggle_h = radius * 1.5
+    local toggle_bg_x = 30
+    local toggle_bg_w = safe.w - 60
+
+    -- El toggle switch está dentro del background box
+    -- Calcular la posición del switch basada en el código de dibujo
+    local switch_w = 50
+    local switch_padding = 8
+    local incluir_text_w = font_reddit_regular_16:getWidth("Incluir")
+    local excluir_text_w = font_reddit_regular_16:getWidth("Excluir")
+
+    -- Posición del switch en el centro de la caja
+    local switch_x = safe.w - 30 - radius + 4 - excluir_text_w - switch_w / 2 - switch_padding
+    local switch_center = switch_x + switch_w / 2
+
+    if expo.inrange(x, toggle_bg_x, toggle_bg_x + toggle_bg_w) and
+       expo.inrange(y, toggle_y, toggle_y + toggle_h) then
+      pressed_dialog_button = "toggle_mode"
+      return
+    end
+
+    -- Detectar si está dentro del área del canvas
+    if expo.inrange(x, content_x, content_x + content_w) and
+       expo.inrange(y, content_y, content_y + content_h) then
+
+      -- Convertir coordenadas a coordenadas del canvas (incluyendo scroll)
+      local local_x = x - content_x
+      local local_y = (y - content_y) + dialog.scroll_y
+
+      -- ========================================
+      -- DETECTAR CLICK EN CATEGORÍA
+      -- ========================================
+      for _, btn in ipairs(dialog.buttons.categories) do
+        if expo.inrange(local_x, btn.x, btn.x + btn.w) and
+           expo.inrange(local_y, btn.y, btn.y + btn.h) then
+          -- Registrar qué botón fue presionado (ejecutar en release)
+          pressed_filter_button = {type = "category", id = btn.id}
+          return
+        end
       end
 
-    -- Detectar si el usuario está arrastrando la headerbar del diálogo
-    -- Esta área permite expandir/contraer el diálogo verticalmente
-    elseif expo.inrange(y, dialog.y, dialog.y + dialog.borderheight) then
-      dialog.dragging = true
-    else
-      dialog.dragging = false
+      -- ========================================
+      -- DETECTAR CLICK EN STAND
+      -- ========================================
+      for _, btn in ipairs(dialog.buttons.stands) do
+        if expo.inrange(local_x, btn.x, btn.x + btn.w) and
+           expo.inrange(local_y, btn.y, btn.y + btn.h) then
+          -- Registrar qué botón fue presionado (ejecutar en release)
+          pressed_filter_button = {
+            type = "stand",
+            category_id = btn.category_id,
+            stand_id = btn.stand_id
+          }
+          return
+        end
+      end
+
+      return
     end
 
-		return
+    -- Detectar si el toque está fuera del diálogo
+    if expo.inrange(x, 0, safe.w) and expo.inrange(y, 0, dialog.y) then
+      dialog_closing = true
+    else
+      dialog_closing = false
+      -- Detectar si está en el header para arrastrarlo
+      if expo.inrange(y, dialog.y, dialog.y + dialog.borderheight) then
+        dialog.dragging = true
+      end
+    end
+
+    return
   end
 
   -- ========================================
@@ -1217,7 +1474,6 @@ local function handlemoved(id, x, y, dx, dy, istouch)
   -- ========================================
   -- NOTIFICAR A MÁQUINAS DE ESTADO
   -- ========================================
-  -- Informar a las máquinas de estado que se produjo un movimiento
   ui_state_machine:handle_moved()
   dialog_state_machine:handle_moved()
 
@@ -1226,20 +1482,48 @@ local function handlemoved(id, x, y, dx, dy, istouch)
   end
 
   -- ========================================
-  -- MANEJAR ARRASTRE (PAN) DEL MAPA
+  -- MANEJAR SCROLL Y ARRASTRE DEL DIÁLOGO DE FILTROS
   -- ========================================
-  -- Determinar multiplicador según el tipo de entrada
-  local multiplier = 1
-  if istouch then
-    -- En pantallas táctiles, el movimiento es más rápido, así que aplicamos un multiplicador reducido
-    multiplier = touchmultiplier
-  end
+  if dialog_state_machine:in_state("filter") and dialog.is_pressed then
+    local content_x = dialog.content_x
+    local content_y = dialog.content_y
+    local content_w = dialog.content_width
+    local content_h = dialog.content_height
 
-  -- Si estamos en el estado de mapa y el arrastre está habilitado
-  if ui_state_machine:in_state("map") and expoguia_map.allowdrag then
-    -- por alguna razón en touch el movimiento por defecto es grande y con esto lo intento contrarrestar
-    expoguia_map.x = expoguia_map.x + dx*multiplier
-    expoguia_map.y = expoguia_map.y + dy*multiplier
+    -- Manejar arrastre del diálogo desde el header
+    if dialog.dragging then
+      -- Mover el diálogo verticalmente
+      local multiplier = istouch and touchmultiplier or 1
+      dialog.y = dialog.y + dy * multiplier
+      if dialog.y < dialog.min_y then
+        dialog.y = dialog.min_y
+      elseif dialog.y > dialog.max_y then
+        dialog.y = dialog.max_y
+      end
+      return  -- Salir para no procesar más lógica
+    end
+
+    -- Si el scroll ya comenzó, permitir continuar sin restricciones de posición
+    if dialog.scroll_started then
+      -- Scroll vertical del contenido
+      local max_scroll = math.max(0, dialog.buttons.content_height - content_h)
+      dialog.scroll_y = math.min(max_scroll, math.max(0, dialog.scroll_y - dy))
+      return  -- Salir para no procesar más lógica
+    end
+
+    -- Detectar si está dentro del área del canvas (para iniciar scroll)
+    -- Solo permitir INICIAR scroll si el toque está dentro del canvas
+    if expo.inrange(x, content_x, content_x + content_w) and
+       expo.inrange(y, content_y, content_y + content_h) then
+      -- Marcar que el scroll ha comenzado
+      dialog.scroll_started = true
+      -- Scroll vertical del contenido
+      local max_scroll = math.max(0, dialog.buttons.content_height - content_h)
+      dialog.scroll_y = math.min(max_scroll, math.max(0, dialog.scroll_y - dy))
+      return  -- Salir para no procesar más lógica
+    end
+
+    return
   end
 
   -- ========================================
@@ -1258,20 +1542,13 @@ local function handlemoved(id, x, y, dx, dy, istouch)
   end
 
   -- ========================================
-  -- MANEJAR ARRASTRE DEL DIÁLOGO DE FILTROS
+  -- MANEJAR ARRASTRE DEL MAPA
   -- ========================================
-  -- Si el diálogo de filtros está abierto y el usuario está arrastrando su headerbar
-  if dialog_state_machine:in_state("filter") then
-    if dialog.dragging then
-      -- Mover el diálogo verticalmente según el movimiento del toque
-      dialog.y = dialog.y + dy * multiplier
-      -- Limitar la posición del diálogo para que no se salga de los límites permitidos
-      if dialog.y < dialog.min_y then
-        dialog.y = dialog.min_y
-      elseif dialog.y > dialog.max_y then
-        dialog.y = dialog.max_y
-      end
-    end
+  -- Si estamos en el estado de mapa y el arrastre está habilitado
+  if ui_state_machine:in_state("map") and expoguia_map.allowdrag then
+    local multiplier = istouch and touchmultiplier or 1
+    expoguia_map.x = expoguia_map.x + dx * multiplier
+    expoguia_map.y = expoguia_map.y + dy * multiplier
   end
 end
 
@@ -1302,15 +1579,48 @@ local function handlereleased(id, x, y, button, istouch)
   -- MANEJAR LIBERACIÓN EN DIÁLOGO DE FILTROS
   -- ========================================
   if dialog_state_machine:in_state("filter") then
+    -- Marcar que se liberó el botón
+    dialog.is_pressed = false
+
+    -- Si había un botón del diálogo presionado, ejecutar la acción
+    if pressed_dialog_button then
+      if pressed_dialog_button == "reset_filters" then
+        resetFilters()
+      elseif pressed_dialog_button == "toggle_mode" then
+        toggleFilterMode()
+      end
+    end
+
+    -- Limpiar el registro del botón del diálogo
+    pressed_dialog_button = nil
+
+    -- Si había un botón de filtro presionado y NO hubo scroll, ejecutar la acción
+    if pressed_filter_button and not dialog.scroll_started then
+      if pressed_filter_button.type == "category" then
+        local cat_ui = filters_ui.categories[pressed_filter_button.id]
+        toggleCategory(cat_ui)
+      elseif pressed_filter_button.type == "stand" then
+        local cat_ui = filters_ui.categories[pressed_filter_button.category_id]
+        toggleStand(cat_ui, pressed_filter_button.stand_id)
+      end
+    end
+
+    -- Limpiar el registro del botón presionado
+    pressed_filter_button = nil
+
     if dialog.dragging then
       -- Si estábamos arrastrando el diálogo, dejar de hacerlo
       dialog.dragging = false
-    elseif expo.inrange(x, 0, safe.w) and
-		   expo.inrange(y, 0, dialog.y) and
-		   dialog_closing then
-      -- Si tocamos fuera del diálogo y puede cerrarse, cerrarlo
+    elseif not dialog.scroll_started and
+           expo.inrange(x, 0, safe.w) and
+           expo.inrange(y, 0, dialog.y) and
+           dialog_closing then
+      -- Si tocamos fuera del diálogo, NO estábamos scrolleando, y puede cerrarse
       dialog_state_machine:set_state("idle")
-		end
+    end
+
+    -- Resetear el flag de scroll sin importar qué pasó
+    dialog.scroll_started = false
   end
 
   -- ========================================
@@ -1404,4 +1714,9 @@ end
 -- window resizing
 function love.resize(w, h)
   safe.x, safe.y, safe.w, safe.h = love.window.getSafeArea()
+  -- Recrear el canvas con las nuevas dimensiones
+  if dialog.canvas then
+    dialog.canvas:release()
+  end
+  dialog.canvas = love.graphics.newCanvas(safe.w, safe.h)
 end

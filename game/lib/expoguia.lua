@@ -180,63 +180,62 @@ end
 --   font_title (love.Font): fuente para títulos
 --   font_normal (love.Font): fuente normal
 --   color (table): tabla de colores disponibles
+--   filter_mode (string): modo de filtrado actual ("include" o "exclude")
 --
 -- Ejemplo:
 --   local content = { windowtype = "filtros", mode = "include" }
---   expo.dialog(0, dialog.y, safe, content, stands, font_big, font_normal, Color)
-function expo.dialog(x, y, safe, content, stands, font_title, font_normal, color)
+--   expo.dialog(0, dialog.y, safe, content, stands, font_big, font_normal, Color, filters_ui,
+--               filters_data, toggleCategoryFn, toggleStandFn, filter_mode)
+function expo.dialog(x, y, safe, content, stands, font_title, font_normal, color, filters_ui,
+                     filters_data, toggleCategoryFn, toggleStandFn, filter_mode)
     love.graphics.push()
     local radius = 24
-    local title_h = radius*2
+    local title_h = radius * 2
+
     -- dibujar la ventana
-    -- establecer el color de fondo
-    local r,g,b,a = expo.hexcolorfromstring(Color.background)
-    love.graphics.setColor(r,g,b,a)
-    love.graphics.rectangle("fill", x, y+title_h, safe.w, safe.h)
+    local r, g, b, a = expo.hexcolorfromstring(Color.background)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.rectangle("fill", x, y + title_h, safe.w, safe.h)
 
     -- dibujar la headerbar
-    -- establecer el color del título
-    r,g,b,a = expo.hexcolorfromstring(Color.foreground_light)
-    love.graphics.setColor(r,g,b,a)
-    love.graphics.circle("fill", x+radius, y+radius, radius)
-    love.graphics.circle("fill", safe.w-radius, y+radius, radius)
-    love.graphics.rectangle("fill", x+radius, y, safe.w-radius*2, title_h)
+    r, g, b, a = expo.hexcolorfromstring(Color.foreground_light)
+    love.graphics.setColor(r, g, b, a)
+    love.graphics.circle("fill", x + radius, y + radius, radius)
+    love.graphics.circle("fill", safe.w - radius, y + radius, radius)
+    love.graphics.rectangle("fill", x + radius, y, safe.w - radius * 2, title_h)
 
     if content.windowtype == "filtros" then
-      -- dibujar una headerbar más grande
-      love.graphics.rectangle("fill", x, y+radius, safe.w, title_h-radius+4*radius)
+      love.graphics.rectangle("fill", x, y + radius, safe.w, title_h - radius + 4 * radius)
 
       love.graphics.setFont(font_title)
-      -- dibujar la pantalla de filtros
-      -- aquí va el código para dibujar la pantalla de filtros
       love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.print("Filtros", safe.w*0.5, y + title_h/2, 0, 1,1, font_title:getWidth("Filtros")*0.5, font_title:getHeight()*0.5)
+      love.graphics.print("Filtros", safe.w * 0.5, y + title_h / 2, 0, 1, 1, font_title:getWidth("Filtros") * 0.5, font_title:getHeight() * 0.5)
 
       love.graphics.setFont(font_normal)
       -- botones de la header
-      expo.pillbutton(safe.w*0.5, y+radius*3, "Reestablecer Filtros", font_normal, Color.reestablecer, Color.text, 18, 0.5, 0.5)
+      expo.pillbutton(safe.w * 0.5, y + radius * 3, "Reestablecer Filtros", font_normal, Color.reestablecer, Color.text, 18, 0.5, 0.5)
+
       -- custom toggle para alternar incluir o excluir
-      r,g,b,a = expo.hexcolorfromstring(Color.button_idle)
-      love.graphics.setColor(r,g,b,a)
-      love.graphics.rectangle("fill", x+30, y+radius*4+4, safe.w-60, radius*1.5, radius*0.75)
+      local r, g, b, a = expo.hexcolorfromstring(Color.button_idle)
+      love.graphics.setColor(r, g, b, a)
+      love.graphics.rectangle("fill", x + 30, y + radius * 4 + 4, safe.w - 60, radius * 1.5, radius * 0.75)
       love.graphics.setColor(1, 1, 1, 1)
-      love.graphics.print("Modo:", x+30+radius-4, y+radius*4.75+4, 0, 1,1, 0, font_normal:getHeight()*0.5)
-      love.graphics.print("Excluir", safe.w-30-radius+4, y+radius*4.75+4, 0, 1,1, font_normal:getWidth("Excluir"), font_normal:getHeight()*0.5)
+      love.graphics.print("Modo:", x + 30 + radius - 4, y + radius * 4.75 + 4, 0, 1, 1, 0, font_normal:getHeight() * 0.5)
+      love.graphics.print("Excluir", safe.w - 30 - radius + 4, y + radius * 4.75 + 4, 0, 1, 1, font_normal:getWidth("Excluir"), font_normal:getHeight() * 0.5)
+
       local switch_w = 50
       local switch_h = 25
       local padding = 8
-      love.graphics.print("Incluir", safe.w-30-radius+4 - font_normal:getWidth("Excluir") - switch_w - padding*2, y+radius*4.75+4, 0, 1,1, font_normal:getWidth("Incluir"), font_normal:getHeight()*0.5)
-      -- dibujar un switch
-      if Filtros.exclude == false then
-        expo.drawtoggle(safe.w-30-radius+4 - font_normal:getWidth("Excluir") - switch_w/2 - padding, y+radius*4.75+4, true, 0.5, 0.5, false)
-      elseif Filtros.exclude then
-        expo.drawtoggle(safe.w-30-radius+4 - font_normal:getWidth("Excluir") - switch_w/2 - padding, y+radius*4.75+4, false, 0.5, 0.5, false)
+      love.graphics.print("Incluir", safe.w - 30 - radius + 4 - font_normal:getWidth("Excluir") - switch_w - padding * 2, y + radius * 4.75 + 4, 0, 1, 1, font_normal:getWidth("Incluir"), font_normal:getHeight() * 0.5)
+
+      -- Dibujar el toggle basado en filter_mode
+      if filter_mode == "include" then
+        expo.drawtoggle(safe.w - 30 - radius + 4 - font_normal:getWidth("Excluir") - switch_w / 2 - padding, y + radius * 4.75 + 4, false, 0.5, 0.5, false)
+      else
+        expo.drawtoggle(safe.w - 30 - radius + 4 - font_normal:getWidth("Excluir") - switch_w / 2 - padding, y + radius * 4.75 + 4, true, 0.5, 0.5, false)
       end
-
-
     else
-      -- terminar de dibujar la headerbar
-      love.graphics.rectangle("fill", x, y+radius, safe.w, title_h-radius)
+      love.graphics.rectangle("fill", x, y + radius, safe.w, title_h - radius)
     end
     love.graphics.pop()
 end
@@ -561,11 +560,11 @@ function expo.draw_stand(stand, safe, stand_info_top_bg_png, stand_info_top_fg_p
     -- ========================================
     -- Calcular escala de la tarjeta para que quepa en el canvas
     local scale = expo.scale(canvas:getWidth(), canvas:getHeight(), stand_info_top_bg_png:getWidth(), stand_info_top_bg_png:getHeight(), 1)
-    
+
     -- Dibujar fondo de la sección superior con el color de la especialidad
     love.graphics.setColor(r, g, b, a)
     love.graphics.draw(stand_info_top_bg_png, 0, 0, 0, scale, scale)
-    
+
     -- Dibujar detalles/decoraciones de la sección superior en blanco
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(stand_info_top_fg_png, 0, 0, 0, scale, scale)
@@ -579,7 +578,7 @@ function expo.draw_stand(stand, safe, stand_info_top_bg_png, stand_info_top_fg_p
     -- Calcular la altura dinámicamente según si hay profesor o no
     local h = 34 + font_small:getHeight() + 17 + font_title:getHeight() + 34
     if stand.profesor then h = h + 54 + font_small:getHeight() end
-    
+
     -- Dibujar el fondo blanco de la sección media
     love.graphics.rectangle("fill", 0, y, w, h)
 
@@ -654,5 +653,173 @@ function expo.draw_stand(stand, safe, stand_info_top_bg_png, stand_info_top_fg_p
 
 end
 
+-- ========================================
+-- FUNCIÓN: build_filter_buttons
+-- ========================================
+-- Construye la estructura de posiciones de botones para detección de clics.
+-- Retorna información de cada botón (categoría y stands).
+--
+-- Parámetros:
+--   filters_ui (table): tabla con las categorías y sus estados
+--   filters_data (table): tabla con los datos cargados desde JSON
+--   content_width (number): ancho disponible para el contenido
+--
+-- Retorna: table - estructura con posiciones de botones
+function expo.build_filter_buttons(filters_ui, filters_data, content_width)
+  local padding = 15
+  local button_height = 40
+  local category_height = 35
+  local spacing = 10
+  local current_y = padding
+  local buttons = {
+    categories = {},
+    stands = {}
+  }
+
+  for _, category_data in ipairs(filters_data) do
+    local cat_id = category_data.id
+    local cat_ui = filters_ui.categories[cat_id]
+
+    if cat_ui then
+      local header_y = current_y
+
+      -- Registrar botón de categoría
+      table.insert(buttons.categories, {
+        id = cat_id,
+        x = padding,
+        y = header_y,
+        w = content_width - (padding * 2),
+        h = category_height
+      })
+
+      current_y = current_y + category_height + spacing
+
+      -- Registrar botones de stands (siempre visibles)
+      local stands_list = category_data.stands or {}
+      local buttons_per_row = 3
+      -- Calcular ancho de botón restando padding y spacing
+      local available_w = content_width - (padding * 2)
+      local button_width = (available_w - (spacing * (buttons_per_row - 1))) / buttons_per_row
+
+      for i, stand_id in ipairs(stands_list) do
+        local col = (i - 1) % buttons_per_row
+        local row = math.floor((i - 1) / buttons_per_row)
+
+        local button_x = padding + (col * (button_width + spacing))
+        local button_y = current_y + (row * (button_height + spacing))
+
+        table.insert(buttons.stands, {
+          category_id = cat_id,
+          stand_id = stand_id,
+          x = button_x,
+          y = button_y,
+          w = button_width,
+          h = button_height
+        })
+      end
+
+      local num_stands = #stands_list
+      local rows_needed = math.ceil(num_stands / buttons_per_row)
+      current_y = current_y + (rows_needed * (button_height + spacing)) + spacing
+      current_y = current_y + spacing
+    end
+  end
+
+  buttons.content_height = current_y
+  return buttons
+end
+
+-- ========================================
+-- FUNCIÓN: draw_filter_canvas
+-- ========================================
+-- Dibuja el contenido de filtros en un canvas con scroll.
+-- El canvas se redibuja cada frame para reflejar cambios en los filtros.
+--
+-- Parámetros:
+--   canvas (love.Canvas): canvas donde dibujar
+--   filters_ui (table): tabla con las categorías y sus estados
+--   filters_data (table): tabla con los datos cargados desde JSON
+--   font_small (love.Font): fuente para texto
+--   color (table): tabla de colores
+--   scroll_y (number): desplazamiento vertical actual
+--   content_width (number): ancho del contenido
+function expo.draw_filter_canvas(canvas, filters_ui, filters_data, font_small, color, scroll_y, content_width)
+  love.graphics.setCanvas(canvas)
+  love.graphics.clear(0, 0, 0, 0)
+
+  local padding = 15
+  local button_height = 40
+  local category_height = 35
+  local spacing = 10
+  local current_y = padding - scroll_y
+
+  for _, category_data in ipairs(filters_data) do
+    local cat_id = category_data.id
+    local cat_ui = filters_ui.categories[cat_id]
+
+    if cat_ui then
+      local header_y = current_y
+
+      -- Dibujar encabezado de categoría
+      local button_color = Color.button_idle
+      -- Si todos los stands están seleccionados, usar color verde
+      if cat_ui.selected then
+        button_color = Color.greentoggle
+      end
+      local r, g, b, a = expo.hexcolorfromstring(button_color)
+      love.graphics.setColor(r, g, b, a)
+      -- Usar ancho completo menos padding en ambos lados
+      love.graphics.rectangle("fill", padding, header_y, content_width - (padding * 2), category_height, 8)
+
+      love.graphics.setColor(1, 1, 1, 1)
+      love.graphics.setFont(font_small)
+      love.graphics.print(category_data.category, padding + 12, header_y + (category_height - font_small:getHeight()) / 2)
+
+      current_y = current_y + category_height + spacing
+
+      -- Dibujar stands
+      local stands_list = category_data.stands or {}
+      local buttons_per_row = 3
+      -- Calcular ancho disponible para botones
+      local available_w = content_width - (padding * 2)
+      local button_width = (available_w - (spacing * (buttons_per_row - 1))) / buttons_per_row
+
+      for i, stand_id in ipairs(stands_list) do
+        local col = (i - 1) % buttons_per_row
+        local row = math.floor((i - 1) / buttons_per_row)
+
+        local button_x = padding + (col * (button_width + spacing))
+        local button_y = current_y + (row * (button_height + spacing))
+
+        local is_selected = cat_ui.stands[stand_id] or false
+
+        if is_selected then
+          r, g, b, a = expo.hexcolorfromstring(color.greentoggle)
+        else
+          r, g, b, a = expo.hexcolorfromstring(color.button_idle)
+        end
+        love.graphics.setColor(r, g, b, a)
+        love.graphics.rectangle("fill", button_x, button_y, button_width, button_height, 6)
+
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setFont(font_small)
+        local text_w = font_small:getWidth(tostring(stand_id))
+        local text_h = font_small:getHeight()
+        love.graphics.print(
+          tostring(stand_id),
+          button_x + (button_width - text_w) / 2,
+          button_y + (button_height - text_h) / 2
+        )
+      end
+
+      local num_stands = #stands_list
+      local rows_needed = math.ceil(num_stands / buttons_per_row)
+      current_y = current_y + (rows_needed * (button_height + spacing)) + spacing
+      current_y = current_y + spacing
+    end
+  end
+
+  love.graphics.setCanvas()
+end
 
 return expo
