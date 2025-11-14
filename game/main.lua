@@ -91,7 +91,7 @@ local back_png = love.graphics.newImage("assets/images/back.png")
 local reload_png = love.graphics.newImage("assets/images/reload.png")
 -- variables
 local copyright = "Copyright © 2025 Lucia Gianluca"
-local debug = false
+local debug = true
 local offlinemode = false
 local experimentalheader = false
 local last_pinch_dist = nil
